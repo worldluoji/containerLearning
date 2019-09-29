@@ -1,0 +1,23 @@
+1.外部访问容器应用，是通过端口来实现的
+  a.参数-p，指定端口
+  	docker run -d -p 8080:80 nginx
+  	其中 8080是宿主机的端口，80是容器的端口。
+  b.参数-P，随机端口，随机范围 32769-60999
+    docker run -d -P nginx
+    
+2.dockerfile的端口实现规则
+  a.有开放 EXPOSE 8761
+    docker build -t registry-agan/eureka-server:1.0.0 .
+    参数-p，指定端口
+    	docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:1.0.0
+  	参数-P，随机端口
+  	  docker run -d -P --name=eureka registry-agan/eureka-server:1.0.0
+  	  达到的效果是0.0.0.0:32771->8761
+  b.没开放 EXPOSE 8761
+    docker build -t registry-agan/eureka-server:1.0.0 .
+    参数-p，指定端口
+    	docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:1.0.0
+    	效果：正常
+  	参数-P，随机端口
+  	  docker run -d -P --name=eureka registry-agan/eureka-server:1.0.0
+  	  达到的效果是，无端口号，连内部容器都没有端口。

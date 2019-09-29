@@ -1,0 +1,26 @@
+1.为什么需要搭建本地仓库？
+  a.节约带宽：因为如果用docker或阿里云官方的仓库走的互联网浪费带宽，而且慢。
+  b.提供资源利用和安全：因为公司内部的镜像，推送到本地仓库，更方便公司内部人员用，而且安全性高。
+  
+2.创建一个仓库容器
+docker run -d -p 5000:5000 \
+--restart=always \
+--privileged=true \
+--name=registry-agan \
+-v /date/volume/registry:/var/lib/registry \
+registry
+
+3.改镜像名（因为要改仓库名字）
+  docker tag 74beb4cfcca2 registry-agan:5000/eureka-server:1.0.0
+  
+4.推送镜像到私有仓库(注意：记得改本地hosts)
+  docker push registry-agan:5000/eureka-server:1.0.0
+  
+5.查看仓库的内容
+  查看仓库的镜像：
+  curl -X GET http://127.0.0.1:5000/v2/_catalog
+  仓库仓库某个镜像的版本信息：
+  curl -X GET http://127.0.0.1:5000/v2/eureka-server/tags/list
+  
+6.拉取镜像
+  docker pull registry-agan:5000/eureka-server:1.0.0

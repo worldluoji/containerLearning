@@ -1,0 +1,26 @@
+1.进入容器
+  docker exec -it eureka /bin/bash
+  
+2.修改容器的内容
+  echo "alias ll='ls -l'" >> ~/.bashrc && source ~/.bashrc
+
+3.生成镜像命令
+  docker commit --help
+  -a 用来指定作者
+	-c 使用Dockerfile指令来创建镜像
+	-m 描述我们此次创建image的信息
+	-p 在commit时，将容器暂停
+  
+4.重新生成镜像例子
+  docker commit -m="add ll" --author="agan" eureka registry-agan/eureka-server:2.0.0
+  
+5.查看是否生成成功 
+  docker images
+
+6.创建容器
+  docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:2.0.0
+
+7.体验是否有ll的命令
+  docker exec -it eureka /bin/bash
+  ll
+  

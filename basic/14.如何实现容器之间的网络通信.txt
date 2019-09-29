@@ -1,0 +1,55 @@
+1.今天的业务场景是：有3个容器：
+   mysql   eureka   product 
+2.安装mysql
+	docker run -p 3306:3306 --name mysql \
+	-e MYSQL_ROOT_PASSWORD=agan \
+	-d mysql:5.7
+
+3.查看mysql的IP信息
+  进入容器：docker exec -it mysql /bin/bash
+  docker镜像没有ifconfig、ping指令
+	apt-get update
+	apt install net-tools # ifconfig
+	apt install iputils-ping # ping
+	
+4.创建eureka容器
+  docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:1.0.0
+  
+5.部署product镜像和容器
+  ======================dockerfile文件======start============================
+	#1.基础镜像：FROM指令：基础镜像名：tag,例如java:8
+	FROM java:8
+	
+	#2.维护者：格式：MAINTAINER <name>
+	MAINTAINER agan
+	
+	#3.镜像的操作指令
+	# ADD拷贝一个文件到容器中，格式：ADD <src> <dest>
+	ADD e-book-product-core-0.0.1-SNAPSHOT.jar  /data/app.jar
+	
+	
+	#5.配置容器启动后，执行什么命令
+	ENTRYPOINT ["java","-jar","/data/app.jar"]
+	======================dockerfile文件======end============================
+	构建镜像：  docker build -t registry-agan/product-server:1.0.0 .
+	创建容器：
+	docker run -d -p 8083:8083 --name product \
+	--link mysql:aganmysql \
+	--link eureka:aganeureka \
+	registry-agan/product-server:1.0.0
+	注：link就是容器直接的连接，你不用IP的情况下可以通过link来实现容器名之间的通信；它的语法是 link 容器名：别名
+	
+6.看效果 
+   http://192.168.0.138:8761/
+   http://192.168.0.138:8083/product/findAllProduct
+7.link的原理
+  docker exec -it product /bin/bash
+  cat /etc/hosts
+  原理就是在prodct容器中的hosts加了2条记录。
+  
+  
+  
+  
+	
+
+	

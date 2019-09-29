@@ -1,0 +1,130 @@
+﻿安装操作系统：centos 7.5.1804
+k8s版本： 1.10 （离线安装）
+
+第一步:准备工作
+	1.准备3台干净的centos虚机。 1台 master，2台node
+	2.分别设置主机名为master   node1,node2,时区
+		timedatectl set-timezone Asia/Shanghai  #3台都要执行
+		hostnamectl set-hostname master   #master执行
+		hostnamectl set-hostname node1    #node1执行
+		hostnamectl set-hostname node2    #node2执行
+                如果是Ubuntu 修改时区步骤如下：
+		1) tzselect
+                                  2) sudo cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+                                  3）date -R查看时区
+                 3. 修改hosts  vi /etc/hosts
+                  	192.168.0.117 matser
+	 	192.168.0.115 node1
+	 	192.168.0.116 node2
+	4.关闭所有节点的seliux以及firewalld
+		sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+		setenforce 0
+		systemctl disable firewalld
+		systemctl stop firewalld
+	5.上传离线安装包
+		链接：https://pan.baidu.com/s/1gl5LO1iAbDSVe2YEIBbiYw 
+		提取码：0rq6 
+	拷贝到服务器上
+
+第二步：安装docker
+	1.离线安装， docker-packages.tar，每个节点都要安装
+		tar -xvf docker-packages.tar
+		cd docker-packages
+		
+		yum install local *.rpm  进行安装
+		注意：（以上命令如果出现
+Error: Package: audit-libs-python-2.7.6-3.el7.x86_64 (/audit-libs-python-2.7.6-3.el7.x86_64)
+           Requires: audit-libs(x86-64) = 2.7.6-3.el7
+           Installed: audit-libs-2.8.1-3.el7.x86_64 (@anaconda)
+               audit-libs(x86-64) = 2.8.1-3.el7
+           Available: audit-libs-2.8.1-3.el7_5.1.x86_64 (updates)
+               audit-libs(x86-64) = 2.8.1-3.el7_5.1
+Error: Package: libsemanage-python-2.5-8.el7.x86_64 (/libsemanage-python-2.5-8.el7.x86_64)
+           Requires: libsemanage = 2.5-8.el7
+           Installed: libsemanage-2.5-11.el7.x86_64 (@anaconda)
+               libsemanage = 2.5-11.el7
+Error: Package: policycoreutils-python-2.5-17.1.el7.x86_64 (/policycoreutils-python-2.5-17.1.el7.x86_64)
+           Requires: policycoreutils = 2.5-17.1.el7
+           Installed: policycoreutils-2.5-22.el7.x86_64 (@anaconda)
+               policycoreutils = 2.5-22.el7
+这个错误：在docker-packages目录下 删除3个文件，命令如下
+rm -rf audit-libs-python-2.7.6-3.el7.x86_64.rpm libsemanage-python-2.5-8.el7.x86_64.rpm policycoreutils-python-2.5-17.1.el7.x86_64.rpm 
+）
+
+		docker version        #安装完成查看版本
+	
+	2.启动docker，并设置为开机自启
+		systemctl start docker && systemctl enable docker
+	
+	3.设置加速器
+cat << EOF > /etc/docker/daemon.json
+{ 
+"insecure-registries":["registry-agan:5000","https://omp33s0g.mirror.aliyuncs.com"] 
+} 
+EOF
+systemctl daemon-reload && systemctl restart docker
+		
+第三步：安装kubeadm，kubectl，kubelet【每个节点都要安装】
+	1.工具介绍
+		kubeadm是集群部署工具
+		kubectl是集群管理工具，通过command来管理集群
+		kubelet的k8s集群每个节点的docker管理服务
+	2.安装命令
+		tar -xvf kube-packages-1.10.1.tar
+		cd kube-packages-1.10.1
+		yum install local *.rpm
+	3.vcgroupfs 报错处理
+		在所有kubernetes节点上设置kubelet使用cgroupfs，与dockerd保持一致，否则kubelet会启动报错
+		默认kubelet使用的cgroup-driver=systemd，改为cgroup-driver=cgroupfs
+		命令：sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+		重设kubelet服务，并重启kubelet服务
+		systemctl daemon-reload && systemctl restart kubelet
+	4.关闭swap，及修改iptables，不然后面kubeadm会报错
+		swapoff -a
+		vi /etc/fstab   #swap一行注释
+		
+cat <<EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+		
+
+
+第四步：导入k8s docker镜像【每个节点都要安装】
+	docker load -i k8s-images-1.10.tar.gz
+	
+第五步：master节点部署
+	init命令注意要指定版本，和pod范围
+	kubeadm init --kubernetes-version=v1.10.1 --pod-network-cidr=10.244.0.0/16
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+	注意：记得拷贝join的命令
+	
+第六步：node节点部署
+
+
+	拷贝join命令执行
+	
+第七步：在master节点，部署集群flannel网络
+	kubectl apply -f kube-flannel.yml
+	
+第八步：在master节点，查看所有节点的状态
+	[root@master1 kubernetes1.10]# kubectl get node
+	NAME      STATUS    ROLES     AGE       VERSION
+	master   Ready     master    18m       v1.10.1
+	node1    Ready     node      18m       v1.10.1
+	ready代表正常。
+	
+	
+第九步：物理机或虚拟机，关闭后如何让node加入集群
+	执行以下2条命令
+	systemctl daemon-reload &	systemctl restart kubelet
+
+	
+	
+	
+

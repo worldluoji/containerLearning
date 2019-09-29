@@ -1,0 +1,20 @@
+我们的课程是安装在centos7  64位。docker有一个要求 系统内核要求在3.10以上。
+1.如何查看系统内核？
+	uname -r
+
+2.安装命令
+	yum -y install docker-io
+
+3.安装完后，启动
+	service docker start
+
+4.启动后，查看是否启动，查看版本
+	docker version
+
+5.入门例子，我们用一个安装nginx来体验
+	docker run -p 80:80 -d nginx
+	
+	
+	
+
+

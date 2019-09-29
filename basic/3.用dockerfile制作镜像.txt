@@ -1,0 +1,41 @@
+1.什么是dockerfile？
+  1.dockerfile是一个文本的配置文件，它可以快速创建自定义的镜像。
+  2.文本内容：包含了若干的命令行，并支持#作为注释行
+  3.文本格式：基础镜像FROM，维护者MAINTAINER,操作指令ADD,容器启动后指令等共计4部分。
+
+======================dockerfile文件==================================
+
+#1.基础镜像：FROM指令：基础镜像名：tag,例如java:8
+FROM java:8
+
+#2.维护者：格式：MAINTAINER <name>
+MAINTAINER agan
+
+#3.镜像的操作指令
+# ADD拷贝一个文件到容器中，格式：ADD <src> <dest>
+ADD eureka-server-0.0.1-SNAPSHOT.jar  /data/app.jar
+
+#告诉docker容器暴露端口，在容器启动的时候，需要通过-p 做端口映射
+EXPOSE 8761
+
+#5.配置容器启动后，执行什么命令
+ENTRYPOINT ["java","-jar","/data/app.jar"]
+
+2.构建镜像
+  docker build -t registry-agan/eureka-server:1.0.0 .
+  其中 -t 对镜像进行命名，一般的命名法：仓库名字/镜像名字：版本号
+  注意：其中 .号，代表当前目录下的dockerfile文件。
+
+3.查看本地镜像
+  docker images
+  
+4.启动镜像
+  docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:1.0.0
+  
+  
+  
+  
+  
+  
+  
+  

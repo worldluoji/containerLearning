@@ -1,0 +1,17 @@
+1.什么是compose?为什么要使用compose?
+  因为运行一个docker镜像，通常是需要docker run 命令，在运行镜像的时候还需要一定的参数 ；
+  例如 容器的名称 映射的卷，绑定端口等等，非常麻烦。
+  那如果有个一个文件来记录保存这些命令该多好？
+  所以compose就是用于存储这些命令，而且呢是比docker run还要简单存储
+  那compose是什么呢？
+  它既是一个yaml格式的文件，例如docker-compose.yml文件。
+  
+2.安装最新compose
+  curl -L https://get.daocloud.io/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+  
+3.添加可执行权限
+  chmod +x /usr/local/bin/docker-compose
+ 
+4.测试安装结果
+  docker-compose --version
+  

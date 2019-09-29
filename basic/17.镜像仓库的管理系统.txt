@@ -1,0 +1,76 @@
+1.搭建一个镜像仓库管理系统需要3个步骤：
+  a.生成一个认证文件，rsa的认证文件。
+  b.创建一个仓库容器。
+  c.创建一个仓库web管理系统。
+  
+2.生成一个认证文件，rsa的认证文件。
+  在/data/volume/registry-agan目录下执行 以下命令：
+  openssl req -new -newkey rsa:4096 -days 365 -subj "/CN=localhost"  -nodes -x509 -keyout conf/auth.key -out conf/auth.cert
+  
+3.创建一个仓库容器。
+  创建一个配置文件：registry-agan.yml
+  a.==============配置文件=======================
+version: 0.1
+#镜像存储地方
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  #镜像的删除权限，enabled: true代表开启删除权限
+  delete:
+    enabled: true
+log:
+  level: info
+#开启仓库的网络，端口号为5000
+http:
+  addr: 0.0.0.0:5000
+  
+  b.==============创建仓库命令=======================
+docker run \
+-v /data/volume/registry-agan/conf/registry-agan.yml:/etc/docker/registry/config.yml:ro \
+-v /data/volume/registry-agan/conf/auth.cert:/etc/docker/registry/auth.cert:ro \
+-p 5000:5000  --name registry-agan -d \
+--privileged=true \
+registry
+  
+
+4.创建一个仓库web管理系统。
+创建一个配置文件：registry-web.yml
+  a.==============配置文件=======================
+registry:
+  # 指定registry的地址（注意：registry-agan为仓库的容器名字）
+  url: http://registry-agan:5000/v2
+  #仓库的名称（注意：registry-agan为仓库的容器名字）
+  name: registry-agan:5000
+  #是否为只读模式，设置true时，不允许删除镜像
+  readonly: false
+  #权限验证
+  auth:
+    #是否开启验证
+    enabled: true
+    #验证证书的key
+    key: /conf/auth.key
+    #证书颁发者的名称
+    issuer: agan
+    
+  b.==============创建仓库web管理系统命令=======================
+docker run \
+-v /data/volume/registry-agan/conf/registry-web.yml:/conf/config.yml:ro \
+-v /data/volume/registry-agan/conf/auth.key:/conf/auth.key \
+-v /data/volume/registry-agan/db:/data \
+-d -p 8080:8080 --link registry-agan --name registry-web \
+--privileged=true \
+hyper/docker-registry-web
+注意：--link registry-agan很重要，没有的话，无法连接仓库。
+
+
+5.登录仓库管理系统
+  http://192.168.0.138:8080/login/auth
+  用户名=admin
+  密码 =admin
+
+6.给搭建好的仓库加个镜像 
+  docker push registry-agan:5000/eureka-server:1.0.0
+
+7.权限设置
+  默认admin用户是没有删除权限，需要重新创建用户，并且给予权限。
+  

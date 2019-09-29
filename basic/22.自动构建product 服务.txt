@@ -1,0 +1,16 @@
+1.创建一个网络
+	创建命令：docker network create agannet
+	查看命令：docker network ls
+	
+2.修改 eureka 微服务
+  让eureka加入网络
+  
+  
+3.自动构建 mysql 微服务
+  启动命令 ：docker-compose -f docker-compose-mysql.yml  up -d
+  
+  
+
+4.自动构建 product 微服务
+  a.maven 发布 镜像 
+  b.启动命令 ：docker-compose -f docker-compose-product.yml  up -d

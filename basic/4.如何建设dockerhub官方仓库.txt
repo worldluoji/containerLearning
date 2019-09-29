@@ -1,0 +1,24 @@
+1.什么是镜像仓库？
+  就是存放镜像的地方。
+  
+2.登录 https://hub.docker.com/
+  创建一个eureka-server仓库
+  
+3.本地linux登录docker官方
+  docker login
+  
+4.改镜像的名，（为什么要改？因为docker官方镜像仓库是以 用户名 来命名仓库的）
+  docker tag registry-agan/eureka-server:1.0.0 bobo0218bo/eureka-server:1.0.0
+  
+5.推送镜像到官方仓库
+  docker push bobo0218bo/eureka-server:1.0.0
+  
+6.拉下来看效果
+  先删除旧镜像:docker rmi bobo0218bo/eureka-server:1.0.0
+  拉取镜像：docker pull bobo0218bo/eureka-server:1.0.0
+  创建容器：docker run -d -p 8761:8761 --name=eureka docker.io/bobo0218bo/eureka-server:1.0.0
+  
+  
+  
+  
+  
