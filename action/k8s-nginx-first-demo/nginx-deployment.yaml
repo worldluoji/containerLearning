@@ -10,7 +10,7 @@ spec:
   template:
     metadata:
       labels:
-        app: nginx
+        app: nginx   #pod标签为app:ngnix
     spec:
       containers:    #容器相关配置
       - name: nginx

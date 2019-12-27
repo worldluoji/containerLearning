@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None     #clusterIP为None，通过域名访问Service时直接解析为POD的IP，找到对应的POD, 有状态应用必须配置
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet         #有状态应用，这里为StatefulSet,而不是Deployment
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"    #使用上面name为nginx的servcie保证pod的可解析身份
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+          name: web

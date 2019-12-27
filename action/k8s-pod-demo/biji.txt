@@ -1,0 +1,13 @@
+POD是k8s项目的原子调度单位，一个pod里可以有多个docker容器
+1. POD只是一个逻辑概念
+2. 一个POD里面的容器共享同一个Network Namespace,并且可以声明共享同一个Volume
+3. 凡是调度，网络，存储及安全相关的属性，基本都是POD级别的
+
+在k8s里，Pod的实现需要一个中间容器，即Infra容器，这个容器是用汇编语言编写的，只有100-200k,性能极好。
+infra容器永远是第一个被创建的容器，其它容器通过Joing Network Namespace的方式，与Infra容器关联在一起。
+这就意味着同一Pod里的Container A和Container B：
+1）可以直接通过localhost进行通信
+2) 它们看到的网络设备与infra容器看到的一样
+3）一个Pod只有一个IP, POD的网络资源也是所有容器共享的
+4) Pod的生命周期只与infra容器有关，而和容器A、B无关
+

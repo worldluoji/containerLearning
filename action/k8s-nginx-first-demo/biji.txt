@@ -50,3 +50,18 @@ kubectl exec -it nginx-deployment-5c678cfb6d-lg9lw -- /bin/bash
 8. 删除
 kubectl delete -f nginx-deployment.yaml
 
+9. 容器编排
+就是让容器照着用户希望的样子运行。实际是使用了控制循环。
+go语言伪代码如下：
+for {
+  实际状态 := 获取集群中对象 X 的实际状态（Actual State）
+  期望状态 := 获取集群中对象 X 的期望状态（Desired State）
+  if 实际状态 == 期望状态{
+    什么都不做
+  } else {
+    执行编排动作，将实际状态调整为期望状态
+  }
+}
+实际状态来自于k8s集群本身，期望状态就是用户编写的yaml文件。
+
+
