@@ -1,0 +1,7 @@
+docker实际上就是一个进程，只是使用了某些障眼法进行了隔离，让docker容器看起来就像在一个独立的空间里面运行。
+1. 使用Linux Namespace让容器以为自己是一个独立的环境。
+原理是在创建进程时指定参数，比如指定CLONE_NEWPID参数，容器就会看到一个全新的进程空间，以为自己就是“1号进程”，实际上在宿主机里看它还是真正的100号进程。
+容器被限定在了当前的PID Namespace里，也看不到别的PID Namespace里的进程。
+当然，除了PID Namespace，Linux还提供了Mount,Network,User等等Namespace，来对各种不同的上下文进行障眼法。
+2. 使用Linux CGroups (Lunux Control Group)限制资源。它可以限制一个进程能够使用的资源上限，包括cpu、内存、磁盘、网络带宽等等。
+3. 使用rootfs技术设限制容器的文件系统，即容器里的应用进程，应当看到一份完全独立的文件系统。

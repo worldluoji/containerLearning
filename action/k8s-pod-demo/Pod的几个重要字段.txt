@@ -1,0 +1,23 @@
+1. NodeSelector
+apiVersion: v1
+kind: Pod
+...
+spec:
+ nodeSelector:
+   disktype: ssd
+意味着这个Pod只会运行在携带了 disktype: ssd标签（Label）的节点上
+
+2.NodeName:该字段被赋值，说明该POD已经被调度过
+
+3.hostAliases
+apiVersion: v1
+kind: Pod
+...
+spec:
+  hostAliases:
+  - ip: "10.1.2.3"
+    hostnames:
+    - "foo.remote"
+    - "bar.remote"
+...
+其实就是/etc/hosts文件定义的域名-IP映射关系
