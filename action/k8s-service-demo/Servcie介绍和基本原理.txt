@@ -1,0 +1,38 @@
+1. Service用于做POD的负载均衡，另外也是因为POD的IP不是固定的。
+
+2. Service如何被访问到的?一共三种方式
+	1）使用VIP进行访问，比如访问一个Service的VIP 10.2.1.233，会路由到对应的POD
+	2）以Servcie的DNS访问，DNS将域名解析为VIP, 这样就和方式1一样了
+	3）以Servcie的DNS访问，但是是Headless Servcie，不需要分配VIP，而是直接解析到POD的IP
+
+3. 访问一个Service, 能够被负载均衡选中的POD就叫做endpoint, 可以通过kubectl get ep查看。
+需要注意的是，只有处于Running状态并且通过readinessProbe检查的Pod,才会出现在endpoint列表里面。 而当一个POD出现问题时也会被Servcie所移除。
+查看Service命令
+$ kubectl get svc hostnames
+NAME        TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+hostnames   ClusterIP   10.0.1.175   <none>        80/TCP    5s
+
+$ curl 10.0.1.175:80
+hostnames-0uton
+
+$ curl 10.0.1.175:80
+hostnames-yp2kp
+
+$ curl 10.0.1.175:80
+hostnames-bvc05
+可见k8s默认时轮询的策略，3个pod每次访问不同的POD。
+这就是Servcie的ClusterIP模式，而Headless模式通常应用于有状态应用之中。
+
+4. Service由kube-proxy组件，加上iptables来共同实现
+当一个Service创建被提交给k8s，kube-proxy就能够感知该事件，事件的响应就会在宿主机上就会加上一条iptables规则，例如：
+-A KUBE-SERVICES -d 10.0.1.175/32 -p tcp -m comment --comment "default/hostnames: cluster IP" -m tcp --dport 80 -j KUBE-SVC-NWV5X2332I4OT4T3
+意思是访问10.0.1.175/32目的端口时80的包都先到这个KUBE-SVC-NWV5X2332I4OT4T3里去，
+而它实际时一组规则的集合
+-A KUBE-SVC-NWV5X2332I4OT4T3 -m comment --comment "default/hostnames:" -m statistic --mode random --probability 0.33332999982 -j KUBE-SEP-WNBA2IHDGP2BOBGZ
+-A KUBE-SVC-NWV5X2332I4OT4T3 -m comment --comment "default/hostnames:" -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-X3P2623AGDH6CDF3
+-A KUBE-SVC-NWV5X2332I4OT4T3 -m comment --comment "default/hostnames:" -j KUBE-SEP-57KPRZ3JQVENLNBR
+实际，就是路由到背后的POD里面去。
+
+5.当iptables规则过多、不断被刷新的时候的，就会占用大量资源，从而影响POD的性能，而IPVS模式的Servcie就是为了解决这个问题。
+创建了Service后，kube-proxy首先会在宿主机上创建也给虚拟网卡（kube-ipvs0）,并为其分配Service VIP做为IP地址；接下来kube-proxy就会通过Linux的IPVS模块，为这个IP地址设置三个（POD有几个就几个）IPVS虚拟主机，并设置轮询的方式访问这三个虚拟主机，而通过"ipvsadm -ln"命令也可以看到3个IPVS虚拟主机的IP和端口对应的正式三个被Servcie代理的POD。
+相比于iptables,IPVS在内核中的实现也时基于Netfilter的NAT模式，所以转发这一层面上，没有显著的性能提升。但是，IPVS并不需要在每台宿主机上为每个POD这个iptables规则，而把这些规则放到了内核态，从而降低了维护这些规则的代价，因此提升了性能。

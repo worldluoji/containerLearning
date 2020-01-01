@@ -1,6 +1,0 @@
-1. Service用于做负载均衡
-
-2. Service如何被访问到的?一共三种方式
-	1）使用VIP进行访问，比如访问一个Service的VIP 10.2.1.233，会路由到对应的POD
-	2）以Servcie的DNS访问，DNS将域名解析为VIP, 这样就和方式1一样了
-	3）以Servcie的DNS访问，但是是Headless Servcie，不需要分配VIP，而是直接解析到POD的IP
