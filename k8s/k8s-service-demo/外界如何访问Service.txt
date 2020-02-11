@@ -1,0 +1,26 @@
+Service只是解决了POD的负载均衡问题，Service的访问信息在 Kubernetes 集群之外，其实是无效的。
+所以，在使用 Kubernetes 的 Service 时，一个必须要面对和解决的问题就是：如何从外部（Kubernetes 集群之外），访问到 Kubernetes 里创建的 Service？
+
+1. 使用nodePort
+参考service-nginx-nodeport.yaml
+原理是kube-proxy在每台宿主机上生成这样一条 iptables 规则
+在nodePort模式下，关于端口的有三个参数，port, nodePort, targetPort
+如果如下定义
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 8080
+      nodePort: 30080
+      targetPort: 80
+      protocol: TCP
+
+则svc信息如下，（注意下面无targetPort信息，只是ClustorPort与NodePort，注意后者为Nodeport）
+ingress-nginx ingress-nginx NodePort 10.105.192.34 <none> 8080:30080/TCP,8443:30443/TCP 28m
+
+则可访问的组合为
+1. clusterIP + port: 10.105.192.34:8080
+2. 内网IP/公网ip + nodePort: 172.31.14.16:30080。（172.31.14.16我的aws局域网ip.）
+30080为nodePort也可以在iptables-save中映证。
+
+还有，就是port参数是必要指定的，nodePort即使是显式指定，也必须是在指定范围内。

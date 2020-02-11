@@ -18,8 +18,11 @@ spec:
         ports:
         - containerPort: 80
         volumeMounts: 
-        - mountPath: "/usr/share/nginx/html"   #配置镜像中挂载的路径
+        - mountPath: /usr/share/nginx/html   #配置镜像中挂载的路径
           name: nginx-vol
       volumes:                                 #宿主机中的路径
       - name: nginx-vol
-        emptyDir: {}
+        hostPath:
+          path: /d/nginxLearning/nginx_k8s_dir  #表示D盘的对应目录
+          type: DirectoryOrCreate
+        # emptyDir: {} 这个是创建临时目录
