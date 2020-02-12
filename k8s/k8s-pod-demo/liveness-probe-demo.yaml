@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: test-liveness-exec
+spec:
+  containers:
+  - name: liveness
+    image: busybox      #容器实际是一个busybox,启动后执行args中的命令，即传教概念/tmp/healthy，30s后再把它删除
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 600
+    livenessProbe:    #定义一个livenessProbe进行健康检查
+      exec:                    
+        command:      #定义健康检查执行的命令为查看下面的文件，如果存在返回就是0，表示成功
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 5    #容器启动5s后开始进行健康检查
+      periodSeconds: 5          #每5s执行一次
+
+#启动后，/tmp/healthy被删除，健康检查通过不了。 k8s就会自动重启，这就是k8s的自动恢复机制，可以通过kubectl get pods查看到重启的过程。
+#自动恢复机制也叫restartPolicy。它是Pod的Spec部分的一个标准字段（pod.spec.restartPolicy），默认值是Always

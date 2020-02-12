@@ -21,3 +21,100 @@ spec:
     - "bar.remote"
 ...
 其实就是/etc/hosts文件定义的域名-IP映射关系
+
+
+4.健康检查探针livenessProbe
+在 Kubernetes 中，你可以为 Pod 里的容器定义一个健康检查“探针”（Probe）。这样，kubelet 就会根据这个 Probe 的返回值决定这个容器的状态，而不是直接以容器进行是否运行（来自 Docker 返回的信息）作为依据。这种机制，是生产环境中保证应用健康存活的重要手段。
+详见liveness-probe-demo.yaml
+
+于是引出了健康检查不通过时的三种策略：
+Always：在任何情况下，只要容器不在运行状态，就自动重启容器；也是默认值
+OnFailure: 只在容器 异常时才自动重启容器；
+Never: 从来不重启容器。
+在实际使用时，我们需要根据应用运行的特性，合理设置这三种恢复策略。
+pod.spec.restartPolicy配置即可
+
+livenessProbe通常会通过http请求的方式进行:
+...
+livenessProbe:
+     httpGet:
+       path: /healthz
+       port: 8080
+       httpHeaders:
+       - name: X-Custom-Header
+         value: Awesome
+       initialDelaySeconds: 3
+       periodSeconds: 3
+这样，由于每个微服务的端口时不一样，检测对应的微服务是否已经健康了。
+
+5.readinessProbe
+readinessProbe 检查结果的成功与否，决定的这个 Pod 是不是能被通过 Service 的方式访问到，而并不影响 Pod 的生命周期。通过readinessProbe的，才会出现endpoint列表中，在endpoint列表中，才能被Service访问到。
+kubectl get ep可查看是否在endpoint列表中
+
+6.PodPresent
+k8s1.11版本后支持PodPresent, 它可以预定义一些参数，通过selector指定，匹配上的pod都会加上这些参数
+反过来查看查看集群中pod对应的yaml: kubectl get pod website -o yaml
+参考pod-present-demo.yaml
+
+
+7. 在 Kubernetes 中，有几种特殊的 Volume，它们存在的意义不是为了存放容器里的数据，也不是用来进行容器和宿主机之间的数据交换。这些特殊 Volume 的作用，是为容器提供预先定义好的数据。所以，从容器的角度来看，这些 Volume 里的信息就是仿佛是被 Kubernetes“投射”（Project）进入容器当中的。这正是 Projected Volume 的含义。
+到目前为止，Kubernetes 支持的 Projected Volume 一共有四种：
+Secret；
+ConfigMap；
+Downward API；
+ServiceAccountToken
+
+1).Secret
+它的作用，是帮你把 Pod 想要访问的加密数据，存放到 Etcd 中。
+然后，你就可以通过在 Pod 的容器里挂载 Volume 的方式，访问到这些 Secret 里保存的信息了。
+kubectl get secrets 查看
+kubectl create secret generic user --from-file=./username.txt 从文件中将username读取到user对象中
+
+2).ConfigMap就是不加密的Secret
+
+3).Downward API，它的作用是：让 Pod 里的容器能够直接获取到这个 Pod API 对象本身的信息。
+不过，需要注意的是，Downward API 能够获取到的信息，一定是 Pod 里的容器进程启动之前就能够确定下来的信息。而如果你想要获取 Pod 容器运行后才会出现的信息，比如，容器进程的 PID，那就肯定不能使用 Downward API 了，而应该考虑在 Pod 里定义一个 sidecar 容器
+
+4).ServiceAccountToken
+Service Account 对象的作用，就是 Kubernetes 系统内置的一种“服务账户”，它是 Kubernetes 进行权限分配的对象。比如，Service Account A，可以只被允许对 Kubernetes API 进行 GET 操作，而 Service Account B，则可以有 Kubernetes API 的所有操作的权限。
+
+8.共享参数
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  hostNetwork: true
+  hostIPC: true
+  hostPID: true
+  containers:
+  - name: nginx
+    image: nginx
+  - name: shell
+    image: busybox
+    stdin: true
+    tty: true
+
+在这个 Pod 中，我定义了共享宿主机的 Network、IPC 和 PID Namespace。这就意味着，这个 Pod 里的所有容器，会直接使用宿主机的网络、直接与宿主机进行 IPC 通信、看到宿主机里正在运行的所有进程。
+
+9.ImagePullPolicy
+首先，是 ImagePullPolicy 字段。它定义了镜像拉取的策略。而它之所以是一个 Container 级别的属性，是因为容器镜像本来就是 Container 定义中的一部分。
+ImagePullPolicy 的值默认是 Always，即每次创建 Pod 都重新拉取一次镜像。另外，当容器的镜像是类似于 nginx 或者 nginx:latest 这样的名字时，ImagePullPolicy 也会被认为 Always。
+而如果它的值被定义为 Never 或者 IfNotPresent，则意味着 Pod 永远不会主动拉取这个镜像，或者只在宿主机上不存在这个镜像时才拉取。
+
+10.Lifecycle, 可以在容器状态发生变化时做一些事：
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-demo
+spec:
+  containers:
+  - name: lifecycle-demo-container
+    image: nginx
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+      preStop:
+        exec:
+          command: ["/usr/sbin/nginx","-s","quit"]
