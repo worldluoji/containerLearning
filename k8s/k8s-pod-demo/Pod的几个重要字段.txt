@@ -50,6 +50,18 @@ livenessProbe:
 5.readinessProbe
 readinessProbe 检查结果的成功与否，决定的这个 Pod 是不是能被通过 Service 的方式访问到，而并不影响 Pod 的生命周期。通过readinessProbe的，才会出现endpoint列表中，在endpoint列表中，才能被Service访问到。
 kubectl get ep可查看是否在endpoint列表中
+readinessProbe详细的配置:
+    initialDelaySeconds：容器启动后第一次执行探测是需要等待多少秒。
+    periodSeconds：执行探测的频率。默认是10秒，最小1秒。
+    timeoutSeconds：探测超时时间。默认1秒，最小1秒。
+    successThreshold：探测失败后，最少连续探测成功多少次才被认定为成功。默认是1。对于liveness必须是1。最小值是1。
+    failureThreshold：探测成功后，最少连续探测失败多少次才被认定为失败。默认是3。最小值是1。
+httpGet配置项：
+    host：连接的主机名，默认连接到pod的IP。你可能想在http header中设置”Host”而不是使用IP。
+    scheme：连接使用的schema，默认HTTP。
+    path: 访问的HTTP server的path。
+    httpHeaders：自定义请求的header。HTTP运行重复的header。
+    port：访问的容器的端口名字或者端口号。端口号必须介于1和65525之间
 
 6.PodPresent
 k8s1.11版本后支持PodPresent, 它可以预定义一些参数，通过selector指定，匹配上的pod都会加上这些参数
