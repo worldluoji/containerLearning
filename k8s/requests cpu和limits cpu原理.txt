@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+spec:
+  containers:
+  - name: app
+    image: images.my-company.example/app:v4
+    env:
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "1"
+      limits:
+        memory: "128Mi"
+        cpu: "2"
+…
+
+Limits CPU 就是容器所在 Cgroup 控制组中的 CPU 上限值，由cpu.cfs_quota_us 和 cpu.cfs_period_us两个值决定。
+Requests CPU 的值就是控制组中的 cpu.shares 的值。

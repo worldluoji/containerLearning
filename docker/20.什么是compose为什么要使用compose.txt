@@ -14,4 +14,6 @@
  
 4.测试安装结果
   docker-compose --version
+
+k8s比起docker-compose有更大的优势，目前都是k8s使用更加广泛。
   

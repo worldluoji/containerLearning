@@ -1,4 +1,4 @@
-Docker实际上就是一个进程，只是使用了某些障眼法进行了隔离，让Docker容器看起来就像在一个独立的空间里面运行。
+﻿Docker实际上就是一个进程，只是使用了某些“障眼法”进行了隔离，让Docker容器看起来就像在一个独立的空间里面运行。
 专业点说，一个“容器”，实际上是一个由 Linux Namespace、Linux Cgroups 和 rootfs 三种技术构建出来的进程的隔离环境。
 既然容器只是运行在宿主机上的一种特殊的进程，那么多个容器之间使用的就还是同一个宿主机的操作系统内核。
 
@@ -46,15 +46,18 @@ $ cat /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us -1
 $ cat /sys/fs/cgroup/cpu/container/cpu.cfs_period_us 100000
 接下来，我们可以通过修改这些文件的内容来设置限制。比如，向 container 组里的 cfs_quota 文件写入 20  ms（20000  us）：
 $ echo 20000 > /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us
-它意味着在每 100  ms 的时间里，被该控制组限制的进程只能使用 20  ms 的 CPU 时间，也就是说这个进程只能使用到 20% 的 CPU 带宽。
+它意味着在每 100  ms 的时间里，被该控制组限制的进程只能使用 20  ms 的 CPU 时间，也就是说这个进程只能使用到20 / 100 = 20% 的 CPU 带宽。
 接下来，我们把被限制的进程的 PID 写入 container 组里的 tasks 文件，上面的设置就会对该进程生效了：
 $ echo 226 > /sys/fs/cgroup/cpu/container/tasks 
 226进行是一个死循环
 $ while : ; do : ; done &
 [1] 226
 
-Linux Cgroups 的设计还是比较易用的，简单粗暴地理解呢，它就是一个子系统目录加上一组资源限制文件的组合。而对于 Docker 等 Linux 容器项目来说，它们只需要在每个子系统下面，为每个容器创建一个控制组（即创建一个新目录），然后在启动容器进程之后，把这个进程的 PID 填写到对应控制组的 tasks 文件中就可以了。
+还有一个参数cpu.shares。这个值是 CPU  Cgroup 对于控制组之间的 CPU 分配比例，它的缺省值是 1024。假设我们前面创建的 group3 中的 cpu.shares 是 1024，而 group4 中的 cpu.shares 是 3072，那么 group3:group4=1:3。
 
+总结一下： cpu.cfs_quota_us 和 cpu.cfs_period_us 这两个值决定了每个控制组中所有进程的可使用 CPU 资源的最大值；cpu.shares 这个值决定了 CPU Cgroup 子系统下控制组可用 CPU 的相对比例，不过只有当系统上 CPU 完全被占满的时候，这个比例才会在各个控制组间起作用。
+
+Linux Cgroups 的设计还是比较易用的，简单粗暴地理解呢，它就是一个子系统目录加上一组资源限制文件的组合。而对于 Docker 等 Linux 容器项目来说，它们只需要在每个子系统下面，为每个容器创建一个控制组（即创建一个新目录），然后在启动容器进程之后，把这个进程的 PID 填写到对应控制组的 tasks 文件中就可以了。
 这也就是
 $ docker run -it --cpu-period=100000 --cpu-quota=20000 ubuntu /bin/bash
 的原理了。
@@ -132,3 +135,42 @@ $ docker image inspect ubuntu:latest
 
 容器本身没有价值，有价值的是“容器编排”。 Kubernetes 项目所擅长的，是按照用户的意愿和整个系统的规则，完全自动化地处理好容器之间的各种关系。
 这种功能，就是我们经常听到的一个概念：编排。
+
+
+5. 容器对进程数量的限制
+在一个容器建立之后，创建容器的服务会在 /sys/fs/cgroup/pids 下建立一个子目录，就是一个控制组，控制组里最关键的一个文件就是 pids.max。我们可以向这个文件写入数值，而这个值就是这个容器中允许的最大进程数目。
+
+6. 容器中init进程退出
+在 init 进程退出之后，容器内的其他进程也都立刻退出了。不过不同的是，init 进程收到的是 SIGTERM 信号，而其他进程收到的是 SIGKILL 信号。
+
+7. 我们在容器中运行 top 命令，虽然可以看到容器中每个进程的 CPU 使用率，但是 top 中"%Cpu(s)"那一行中显示的数值，并不是这个容器的 CPU 整体使用率，而是容器宿主机的 CPU 使用率。这个数值，100% 就表示这个进程在这个瞬时使用了 1 个 CPU，200% 就是使用了 2 个 CPU。
+top 会从 proc 文件系统中每个进程对应的 stat 文件中读取 2 个数值。这个 stat 文件就是 /proc/[pid]/stat。其实这个 stat 文件实时输出了进程的状态信息，比如进程的运行态（Running 还是 Sleeping）、父进程 PID、进程优先级、进程使用的内存等等总共 50 多项。
+
+在 Linux 中有个自己的时钟，它会周期性地产生中断。每次中断都会触发 Linux 内核去做一次进程调度，而这一次中断就是一个 tick。因为是周期性的中断，比如 1 秒钟 100 次中断（getconf CTL_TCK查看），那么一个 tick 作为一个时间单位看的话，也就是 1/100 秒。
+
+stat文件中有两个数值utime 和 stime 是什么含义呢？utime 是表示进程的用户态部分在 Linux 调度中获得 CPU 的 ticks，stime 是表示进程的内核态部分在 Linux 调度中获得 CPU 的 ticks。假如进程的 utime 是 130ticks，就相当于 130 * 1 / 100=1.3 秒，也就是进程从启动开始在用户态总共运行了 1.3 秒钟。
+这里需要你注意，utime 和 stime 都是一个累计值，也就是说从进程启动开始，这两个值就是一直在累积增长的。
+所以，简单总结一下，这个公式是这样的：
+进程的 CPU 使用率 =((utime_2 – utime_1) + (stime_2 – stime_1)) * 100.0 / (HZ * et)
+第一个 HZ 是什么意思呢？前面我们介绍 ticks 里说了，ticks 是按照固定频率发生的，在我们的 Linux 系统里 1 秒钟是 100 次，那么 HZ 就是 1 秒钟里 ticks 的次数（getconf CTL_TCK查看），这里值是 100。
+第二个参数 et 是我们刚才说的那个“瞬时”的时间，也就是得到 utime_1 和 utime_2 这两个值的时间间隔（即1s两个值的间隔）。
+
+8. 容器在系统中被杀掉
+容器在系统中被杀掉，其实只有一种情况，那就是容器中的进程使用了太多的内存。具体来说，就是容器里所有进程使用的内存量，超过了容器所在 Memory Cgroup 里的内存限制。这时 Linux 系统就会主动杀死容器中的一个进程，往往这会导致整个容器的退出。这时候，如果我们运行docker inspect 命令查看容器退出的原因，就会看到容器处于"exited"状态，并且"OOMKilled"是 true。
+如何确定是否发生了OOM Killer?
+journalctl -k 命令，或者直接查看日志文件 /var/log/message，我们会发现当容器发生 OOM Kill 的时候，内核会输出下面的:
+Memory Cgroup out of memory......
+
+9.理解Memory Cgroup
+Memory Cgroup 也是 Linux Cgroups 子系统之一，它的作用是对一组进程的 Memory 使用做限制。
+Memory Cgroup 的虚拟文件系统的挂载点一般在"/sys/fs/cgroup/memory"这个目录下，这个和 CPU Cgroup 类似。
+memory.limit_in_bytes : 是每个控制组里最重要的一个参数了。这是因为一个控制组里所有进程可使用内存的最大值，就是由这个参数的值来直接限制的。
+memory.oom_control : 当控制组中的进程内存使用达到上限值时，这个参数能够决定会不会触发 OOM Killer。 1代表不发生OOM Killer, 缺省代表发生。
+memory.usage_in_bytes : 这个参数是只读的，它里面的数值是当前控制组里所有进程实际使用的内存总和。
+
+那么知道了哪个进程消耗了最大内存之后，我们就可以有针对性地对这个进程进行分析了，一般有这两种情况：
+第一种情况是这个进程本身的确需要很大的内存，这说明我们给 memory.limit_in_bytes 里的内存上限值设置小了，那么就需要增大内存的上限值。
+第二种情况是进程的代码中有 Bug，会导致内存泄漏，进程内存使用到达了 Memory Cgroup 中的上限。如果是这种情况，就需要我们具体去解决代码里的问题了。
+注意点：Memory Cgroup 只是统计了 RSS 和 Page Cache 这两部分的内存。
+
+需要你留意：当 设置memory.swappiness = 0 的时候，对匿名页的回收是始终禁止的，也就是容器始终都不会使用 Swap 空间。
