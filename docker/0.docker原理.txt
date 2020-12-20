@@ -63,7 +63,7 @@ $ docker run -it --cpu-period=100000 --cpu-quota=20000 ubuntu /bin/bash
 的原理了。
 
 
-3. 使用rootfs技术设限制容器的文件系统，即容器里的应用进程，应当看到一份完全独立的文件系统。
+3. 使用rootfs技术（Mount Namespace）设限制容器的文件系统，即容器里的应用进程，应当看到一份完全独立的文件系统。
 Mount Namespace 跟其他 Namespace 的使用略有不同的地方：它对容器进程视图的改变，一定是伴随着挂载操作（mount）才能生效。
 我们可以在容器进程启动之前重新挂载它的整个根目录“/”。而由于 Mount Namespace 的存在，这个挂载对宿主机不可见，所以容器进程就可以在里面随便折腾了。
 在 Linux 操作系统里，有一个名为 chroot 的命令可以帮助你在 shell 中方便地完成这个工作。顾名思义，它的作用就是帮你“change root file system”，即改变进程的根目录到你指定的位置。它的用法也非常简单。
@@ -91,7 +91,7 @@ $ chroot $HOME/test /bin/bash
 有了容器镜像“打包操作系统”的能力，这个最基础的依赖环境也终于变成了应用沙盒的一部分。这就赋予了容器所谓的一致性：无论在本地、云端，还是在一台任何地方的机器上，用户只需要解压打包好的容器镜像，那么这个应用运行所需要的完整的执行环境就被重现出来了。
 这种深入到操作系统级别的运行环境一致性，打通了应用在本地开发和远端执行环境之间难以逾越的鸿沟。
 
-Docker 在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量 rootfs。
+我们在容器里，运行  df 命令，你可以看到在容器中根目录 (/) 的文件系统类型是"overlay"，它不是我们在普通 Linux 节点上看到的 Ext4 或者 XFS 之类常见的文件系统。Docker 在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量 rootfs。
 这个想法的原理是Union File System 也叫 UnionFS，最主要的功能是将多个不同位置的目录联合挂载（union mount）到同一个目录下。
 $ tree
 .
@@ -126,6 +126,18 @@ $ docker image inspect ubuntu:latest
       ]
     }
  可以看到，这个 Ubuntu 镜像，实际上由五个层组成。这五个层就是五个增量 rootfs，每一层都是 Ubuntu 操作系统文件与目录的一部分；而在使用镜像时，Docker 会把这些增量联合挂载在一个统一的挂载点上（等价于前面例子里的“/C”目录）。
+
+容器镜像文件可以分成多个层（layer），每层可以对应 OverlayFS 里 lowerdir 的一个目录，lowerdir 支持多个目录，也就可以支持多层的镜像文件。
+在容器启动后，对镜像文件中修改就会被保存在 upperdir 里了。从挂载点的视角看，upper 层的文件会覆盖 lower 层的文件。
+减少相同镜像文件在同一个节点上的数据冗余，可以节省磁盘空间，也可以减少镜像文件下载占用的网络资源。
+
+从宿主机的角度看，upperdir 就是一个目录，如果容器不断往容器文件系统中写入数据，实际上就是往宿主机的磁盘上写数据，这些数据也就存在于宿主机的磁盘目录中。当然对于容器来说，如果有大量的写操作是不建议写入容器文件系统的，一般是需要给容器挂载一个 volume，用来满足大量的文件读写。
+
+一些场景下，如果需要限制容器磁盘（其实也就是宿主机磁盘）的写入量，
+我们在用 docker run 启动容器的时候，加上一个参数 --storage-opt size= <SIZE> ，就能限制住容器 OverlayFS 文件系统可写入的最大数据量了。
+实际上就是对 OverlayFS 的 upperdir 目录做 XFS Quota 的限流。对于 Linux 上最常用的两个文件系统 XFS 和 ext4，它们都有特性 Quota。
+这个我们可以根据 /proc/mounts 中容器的 OverlayFS Mount 信息，再结合 Docker 的代码，就可以知道限制的目录是"/var/lib/docker/overlay2/<docker_id>"。那这个目录下有什么呢？果然 upperdir 目录中有对应的"diff"目录，就在里面！
+
 
 
 4. 一些概念：
@@ -174,3 +186,24 @@ memory.usage_in_bytes : 这个参数是只读的，它里面的数值是当前�
 注意点：Memory Cgroup 只是统计了 RSS 和 Page Cache 这两部分的内存。
 
 需要你留意：当 设置memory.swappiness = 0 的时候，对匿名页的回收是始终禁止的，也就是容器始终都不会使用 Swap 空间。
+
+
+10. Blkio Cgroup
+先理解两个指标：
+1）IOPS 是 Input/Output Operations Per Second 的简称，也就是每秒钟磁盘读写的次数，这个数值越大，当然也就表示性能越好。
+2）吞吐量（Throughput）是指每秒钟磁盘中数据的读取量，一般以 MB/s 为单位。这个读取量可以叫作吞吐量，有时候也被称为带宽（Bandwidth）。刚才我们用到的 fio 显示结果就体现了带宽。
+吞吐量 = 数据块大小 *IOPS。
+
+在 blkio Cgroup 中，有四个最主要的参数，它们可以用来限制磁盘 I/O 性能：
+blkio.throttle.read_iops_device        读磁盘IOPS限制
+blkio.throttle.read_bps_device         读磁盘吞吐量限制
+blkio.throttle.write_iops_device
+blkio.throttle.write_bps_device
+
+如果是Cgroup v1, 没有使用Direct I/O模式，那么即使我们设置了 blkio Cgroup，也根本不能限制磁盘的吞吐量了。
+因为默认是Buffered I/O （为了性能，常用）， 模式会先写Page Cache。
+Cgroup v2 相比 Cgroup v1 做的最大的变动就是一个进程属于一个控制组，而每个控制组里可以定义自己需要的多个子系统。
+Cgroup V2 里的 io 子系统就等同于 Cgroup v1 里的 blkio 子系统。
+那么，Cgroup 对进程 pid_y 的磁盘 I/O 做限制的时候，就可以考虑到进程 pid_y 写入到 Page Cache 内存的页面了，这样 buffered I/O 的磁盘限速就实现了。
+但目前即使最新版本的 Ubuntu Linux 或者 Centos Linux，仍然在使用 Cgroup v1 作为缺省的 Cgroup。打开方法就是配置一个 kernel 参数"cgroup_no_v1=blkio,memory"，这表示把 Cgroup v1 的 blkio 和 Memory 两个子系统给禁止，这样 Cgroup v2 的 io 和 Memory 这两个子系统就打开了。
+虽然 Cgroup v2 解决了 Buffered I/O 磁盘读写限速的问题，但是在现实的容器平台上也不是能够立刻使用的，还需要等待一段时间。目前从 runC、containerd 到 Kubernetes 都是刚刚开始支持 Cgroup v2，而对生产环境中原有运行 Cgroup v1 的节点要迁移转化成 Cgroup v2 需要一个过程。
