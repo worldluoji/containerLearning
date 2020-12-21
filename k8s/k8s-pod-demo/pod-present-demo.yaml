@@ -29,3 +29,30 @@ spec:
       image: nginx:1.8
       ports:
         - containerPort: 80
+
+# 最终运行起来的效果
+# $ kubectl get pod website -o yaml
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: website
+#   labels:
+#     app: website
+#     role: frontend
+#   annotations:
+#     podpreset.admission.kubernetes.io/podpreset-allow-database: "resource version"
+# spec:
+#   containers:
+#     - name: website
+#       image: nginx
+#       volumeMounts:
+#         - mountPath: /cache
+#           name: cache-volume
+#       ports:
+#         - containerPort: 80
+#       env:
+#         - name: DB_PORT
+#           value: "6379"
+#   volumes:
+#     - name: cache-volume
+#       emptyDir: {}
