@@ -17,7 +17,7 @@ kind: StatefulSet         #有状态应用，这里为StatefulSet,而不是Deplo
 metadata:
   name: web
 spec:
-  serviceName: "nginx"    #使用上面name为nginx的servcie保证pod的可解析身份
+  serviceName: "nginx"    #使用nginx这个Headless service来保证POD的可解析身份
   replicas: 2
   selector:
     matchLabels:

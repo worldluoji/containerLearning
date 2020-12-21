@@ -1,0 +1,68 @@
+1. Deployment只能用于无状态应用的编排，而StatefulSet用于有状态应用的编排
+
+2. StatefulSet把现实世界中的“有状态应用”分为两类：
+	1).拓扑状态：即应用多个实例之间的关系不对等，比如POD A要先于POD B启动。删除AB两个POD，那么恢复时，也必须先A后B
+	2).存储状态。POD A读取到的存储数据，哪怕过了10分钟后，甚至POD被重新创建过，也能读取到同样路径的数据
+StatefulSet就是记录下这些状态，以便POD重建时能恢复这些状态
+
+
+3.  "Normal Service"和"Headless Service“的应用场景是什么？
+“Headless Service不需要分配一个 VIP，而是可以直接以 DNS 记录的方式解析出被代理 Pod 的 IP 地址”，同时由于其编号的严格规定，会按照编号顺序完成创建工作。
+如果在部署StatefulSet的时候，必须使用"Headless Service" ，而不是"Normal Service”。
+所谓的 Headless Service，其实仍是一个标准 Service 的 YAML 文件。只不过，它的 clusterIP 字段的值是：None，即：这个 Service，没有一个 VIP 作为“头”。这也就是 Headless 的含义。所以，这个 Service 被创建后并不会被分配一个 VIP，而是会以 DNS 记录的方式暴露出它所代理的 Pod。
+
+
+4. 一个例子
+$ kubectl create -f statefulset-demo.yaml
+$ kubectl get service nginx
+NAME      TYPE         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+nginx     ClusterIP    None         <none>        80/TCP    10s
+$ kubectl get statefulset web
+NAME      DESIRED   CURRENT   AGE
+web       2         1         19s
+
+
+
+$ kubectl get pods -w -l app=nginx
+NAME      READY     STATUS    RESTARTS   AGE
+web-0     0/1       Pending   0          0s
+web-0     0/1       Pending   0         0s
+web-0     0/1       ContainerCreating   0         0s
+web-0     1/1       Running   0         19s
+web-1     0/1       Pending   0         0s
+web-1     0/1       Pending   0         0s
+web-1     0/1       ContainerCreating   0         0s
+web-1     1/1       Running   0         20s
+
+可见，这些POD的创建是严格按照顺序进行的，web-0进入Running状态后，web-1才开始创建。
+kubectl 的 -w 参数，即：Watch 功能，实时查看 StatefulSet 创建两个有状态实例的过程。
+更重要的是，这些 Pod 的创建，也是严格按照编号顺序进行的。比如，在 web-0 进入到 Running 状态、并且细分状态（Conditions）成为 Ready 之前，web-1 会一直处于 Pending 状态。
+通过这种方法，Kubernetes 就成功地将 Pod 的拓扑状态（比如：哪个节点先启动，哪个节点后启动），按照 Pod 的“名字 + 编号”的方式固定了下来。此外，Kubernetes 还为每一个 Pod 提供了一个固定并且唯一的访问入口，即：这个 Pod 对应的 DNS 记录。
+
+如果我们再用 nslookup 命令，查看一下这个新 Pod 对应的 Headless Service：
+$ kubectl run -i --tty --image busybox dns-test --restart=Never --rm /bin/sh 
+$ nslookup web-0.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      web-0.nginx
+Address 1: 10.244.1.8
+
+$ nslookup web-1.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      web-1.nginx
+Address 1: 10.244.2.8
+不过，相信你也已经注意到了，尽管 web-0.nginx 这条记录本身不会变，但它解析到的 Pod 的 IP 地址，并不是固定的。这就意味着，对于“有状态应用”实例的访问，你必须使用 DNS 记录或者 hostname 的方式，而绝不应该直接访问这些 Pod 的 IP 地址。
+
+问题:
+** server can't find web-0.nginx: NXDOMAIN
+*** Can't find web-0.nginx: No answer
+但是直接ping web-0.nginx 是可以获取真实ip地址的.
+确实是如楼下的同学所说, 需要用 busybox:1.28.4 的镜像. 这个是最新版busybox的问题.
+kubectl run -i --tty --image busybox:1.28.4 dns-test --restart=Never --rm /bin/sh
+这样就可获得期待的结果了.
+我也是google到了 https://github.com/kubernetes/kubernetes/issues/66924 才知道的.
+再看楼下的评论,才发现有其他同学也遇到了,且在几天前已经给出了解决方案. 👍
+新技术确实变化太快了,作者在写文章时用的没问题,也许隔一天因为某个默认镜像修改了,就会出现新的状况.
