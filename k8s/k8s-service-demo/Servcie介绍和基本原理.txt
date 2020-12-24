@@ -5,6 +5,9 @@
 	2）以Servcie的DNS访问，DNS将域名解析为VIP, 这样就和方式1一样了
 	3）以Servcie的DNS访问，但是是Headless Servcie，不需要分配VIP，而是直接解析到POD的IP
 
+所谓的 Headless Service，其实仍是一个标准 Service 的 YAML 文件。只不过，它的 clusterIP 字段的值是：None，即：这个 Service，没有一个 VIP 作为“头”。这也就是 Headless 的含义。所以，这个 Service 被创建后并不会被分配一个 VIP，而是会以 DNS 记录的方式暴露出它所代理的 Pod。
+当创建了一个 Headless Service 之后，它所代理的所有 Pod 的 IP 地址，都会被绑定一个这样格式的 DNS 记录，如下所示：<pod-name>.<svc-name>.<namespace>.svc.cluster.local这个 DNS 记录，正是 Kubernetes 项目为 Pod 分配的唯一的“可解析身份”（Resolvable Identity）。
+
 3. 访问一个Service, 能够被负载均衡选中的POD就叫做endpoint, 可以通过kubectl get ep查看。
 需要注意的是，只有处于Running状态并且通过readinessProbe检查的Pod,才会出现在endpoint列表里面。 而当一个POD出现问题时也会被Servcie所移除。
 查看Service命令

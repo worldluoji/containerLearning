@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  template:
+    spec:
+      containers:
+      - name: pi
+        image: resouer/ubuntu-bc 
+        command: ["sh", "-c", "echo 'scale=10000; 4*a(1)' | bc -l "]
+      restartPolicy: Never
+  backoffLimit: 4
+
+  # bc 命令是 Linux 里的“计算器”；-l 表示，我现在要使用标准数学库；
+  # 而 a(1)，则是调用数学库中的 arctangent 函数，计算 atan(1)
