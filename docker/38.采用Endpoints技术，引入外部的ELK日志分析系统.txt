@@ -1,9 +1,0 @@
-1.在第27节课的基础上，为k8s引入外部的ELK系统。
-
-2.需要改个端口
-  由于9250端口为对外开放，故需要在docker-compose-elk.yml开放端口，给外部用，也就是给K8S用。
-  
-3.启动
-  docker-compose -f docker-compose-elk.yml  up -d
-  
-4.加入endpoints 
