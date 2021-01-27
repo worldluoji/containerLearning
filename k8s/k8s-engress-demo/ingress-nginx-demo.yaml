@@ -1,0 +1,48 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: cafe-ingress
+spec:
+  tls:
+  - hosts:
+    - cafe.example.com    #当用户访问 cafe.example.com 的时候，实际上访问到的是这个Ingress
+    secretName: cafe-secret
+  rules:
+  - host: cafe.example.com
+    http:
+      paths:
+      - path: /tea  #访问cafe.example.com/tea时路由到tea-svc
+        backend:
+          serviceName: tea-svc
+          servicePort: 80
+      - path: /coffee
+        backend:
+          serviceName: coffee-svc
+          servicePort: 80
+---
+#安装kubectl apply -f https://github.com/kubernetes/ingress-nginx/blob/master/deploy/static/mandatory.yaml
+#安装好nginx-ingress-controller后，将nginx服务暴露出去即可访问, 上面的文件中已经帮你维护了一个nginx的deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      nodePort: 30080
+      port: 8080
+      targetPort: 80
+      protocol: TCP
+    - name: https
+      nodePort: 30088
+      port: 443
+      targetPort: 443
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx

@@ -1,0 +1,4 @@
+一. 按步骤实现如下需求：
+1. 将springcloud-zuul-demo中的两个服务部署到k8s当中，使得本地能够正常访问
+2. 新建一个微服务teacher-demo，使用feign，让1中student-demo这个服务能够访问到teacher-demo
+3. 根据步骤构建一个docker仓库，使得1中可以从docker仓库拉取镜像

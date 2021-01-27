@@ -1,0 +1,66 @@
+1.maven构建eureka镜像推送给私有仓库，需要2个步骤：
+  a.开启docker远程API
+  B.编写maven的docker插件
+  
+2.开启docker远程API
+	a.vi /usr/lib/systemd/system/docker.service
+	  在配置文件中，加入：
+	  -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
+  b.重启docker
+    systemctl daemon-reload
+		systemctl restart docker
+	c.验证docker远程api是否生效
+	  netstat -anp|grep 2375
+		curl 127.0.0.1:2375/info
+		
+3.编写maven的docker插件
+  配置hosts 192.168.0.138 registry-agan
+==================docker maven插件======start=============================
+  	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<!-- 添加docker maven插件 -->
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>1.1.1</version>
+				<configuration>
+					<!-- 推送到指定的仓库 -->
+					<registryUrl>registry-agan:5000</registryUrl>
+					<!-- 开启docker远程API的端口 -->
+					<dockerHost>http://registry-agan:2375</dockerHost>
+					<!-- 指定镜像名称 格式：仓库域名：端口/镜像名字：镜像的版本号 -->
+					<imageName>registry-agan:5000/${project.artifactId}:${project.version}</imageName>
+					<!-- 指定基础镜像 类似dockerfile的FROM指令 -->
+					<baseImage>java:8</baseImage>
+					<!-- 配置容器启动后，执行什么命令，等于与 dockerfile的ENTRYPOINT -->
+					<entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint>
+					<!-- 为dockerde tag指定版本号、latest -->
+					<imageTags>
+						<imageTag>${project.version}</imageTag>
+						<imageTag>latest</imageTag>
+					</imageTags>
+					<!-- 是否有push的功能 true代表有 -->
+					<pushImage>true</pushImage>
+					<!-- push后是否覆盖已存在的标签镜像 -->
+					<forceTags>true</forceTags>
+					<!-- 复制jar包到docker容器指定的目录 -->
+					<resources>
+						<resource>
+							<targetPath>/</targetPath>
+							<!-- 指定要复制jar包的根目录，${project.build.directory}代表 target的目录 -->
+							<directory>${project.build.directory}</directory>
+							<!-- 指定要复制的文件，${project.build.finalName}代表打包后的jar -->
+							<include>${project.build.finalName}.jar</include>
+						</resource>
+					</resources>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+==================docker maven插件======end=============================
+执行命令：
+clean package -DskipTests docker:build

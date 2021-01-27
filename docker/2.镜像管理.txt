@@ -1,0 +1,46 @@
+1.什么是镜像？
+  a.一个只读的模板，就是一个dockerfile,可以在镜像仓库上传或下载。
+  b.先有镜像，后有容器；并且一个镜像可以创建多个容器。
+  b.docker镜像最大的特点：分层结构。最底层是一个base层，也即是一个操作系统层。它还会从base层一层层的叠加生成。
+    什么是层层叠加？例如，安装一个软件，它就会在base层的基础上追加一层。
+    它的好处就是资源共享。
+
+2.查看docker本地的镜像
+   docker images
+
+3.搜索一个镜像
+   docker search mysql
+   INDEX ：仓库地址
+   NAME  ：仓库+名称
+   STARS :用户的喜欢程度
+   OFFICIAL：是否为官方，如果为OK的话代表官方，可信度高，放心使用
+   UTOMATED：是否为公开的dockerfile脚本制成的？也即是说dockerfile是否提供。
+  
+4.下载一个镜像
+  docker pull mysql:5.7
+  下载完后，查看是否在本地docker images
+
+5.删除docker镜像
+  docker rmi IMAGE ID
+  如果要删除全部镜像 
+  docker rmi $(docker images -q)
+
+6.加速器的配置
+  先体验国外下载有多慢 
+  time docker pull nginx
+  总共花费：2m21.351s
+  用了加速器总共花费：0m8.462s
+  
+  centos的阿里云加速器命令
+
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://omp33s0g.mirror.aliyuncs.com"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+  
+

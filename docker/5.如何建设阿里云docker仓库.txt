@@ -1,0 +1,10 @@
+1.进入阿里云，先创建命名空间。
+2.建个镜像仓库
+3.登录阿里云Docker Registry
+	docker login --username=你的用户名 registry.cn-shenzhen.aliyuncs.com
+4.改镜像名（因为要改仓库名字）
+  docker tag 4a32029c0227 registry.cn-shenzhen.aliyuncs.com/agan/eureka-server:1.0.0
+5.push到阿里仓库
+  docker push registry.cn-shenzhen.aliyuncs.com/agan/eureka-server:1.0.0
+6. 从Registry中拉取镜像
+	docker pull registry.cn-shenzhen.aliyuncs.com/agan/eureka-server:1.0.0

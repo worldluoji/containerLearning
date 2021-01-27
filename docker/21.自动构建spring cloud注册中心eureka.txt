@@ -1,0 +1,27 @@
+1.compose 内容
+================================================================
+#docker compse 的配置文件包含3大部分：version services networks
+version: '3'
+services:
+  # 服务名称
+  eureka:
+    # 容器名称
+    container_name: eureka
+    # 镜像名称
+    image: registry-agan:5000/eureka-server:0.0.1-SNAPSHOT
+    # 暴露的端口号
+    ports:
+      - "8761:8761"
+    # 设置卷挂载的路径 /opt/data代表的是日志存储路径 
+    volumes: 
+      - /data/volume/eureka:/opt/data
+    # 设置权限 ：拥有root权限
+    privileged: true
+    
+    networks:
+      - default
+    
+================================================================
+
+2.命令
+docker-compose -f docker-compose-eureka.yml  up -d

@@ -1,0 +1,40 @@
+1.先搭建elk
+  编写 docker-compose-elk.yml
+  编写 logstash.conf 存于 /data/volume/logstash/config目录下 
+2.启动
+  docker-compose -f docker-compose-elk.yml  up -d
+  
+	如果elasticsearch 报这个错误
+		ERROR: [1] bootstrap checks failed
+		[1]: max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+	解决方案：sudo sysctl -w vm.max_map_count=262144
+	
+3.创建一个索引
+  curl -XPUT http://192.168.0.138:9200/applog
+
+4.进入elk的界面
+  http://192.168.0.138:5601/app/kibana
+  
+5.每个服务都加入elk的依赖包
+		<dependency>
+	      <groupId>net.logstash.logback</groupId>
+	      <artifactId>logstash-logback-encoder</artifactId>
+	      <version>5.0</version>
+	    </dependency>
+6.为每个服务改logback
+7.看效果 
+   http://192.168.0.138:8083/product/findAllProduct
+   http://192.168.0.138:8090/createOrder
+ 进入elk的界面
+  http://192.168.0.138:5601/app/kibana
+
+  
+  
+
+
+
+
+
+
+
+

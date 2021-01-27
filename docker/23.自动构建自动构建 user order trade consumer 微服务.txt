@@ -1,0 +1,4 @@
+1.拷贝4个微服务
+2.改配置文件
+3.改pom文件
+启动命令 ：docker-compose -f docker-compose-service.yml  up -d

@@ -1,0 +1,11 @@
+FROM java:8
+MAINTAINER luoji
+
+# ADD拷贝一个文件到容器中，格式：ADD <src> <dest>
+ADD eureka-hello-0.0.1-SNAPSHOT.jar  /data/app.jar
+
+#告诉docker容器暴露端口，在容器启动的时候，需要通过-p 做端口映射
+EXPOSE 8761
+
+#配置容器启动后，执行什么命令
+ENTRYPOINT ["java","-jar","/data/app.jar"]

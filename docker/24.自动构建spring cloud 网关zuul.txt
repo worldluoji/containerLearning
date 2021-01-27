@@ -1,0 +1,10 @@
+1.拷贝zuul微服务
+2.改pom文件
+3.改配置文件
+4.启动命令
+docker-compose -f docker-compose-zuul.yml  up -d
+
+演示 
+http://192.168.0.138:9010/e-book-consumer-order/createOrder
+http://192.168.0.138:9010/e-book-product/product/findAllProduct
+

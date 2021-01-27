@@ -1,0 +1,158 @@
+1. NodeSelector
+apiVersion: v1
+kind: Pod
+...
+spec:
+ nodeSelector:
+   disktype: ssd
+意味着这个Pod只会运行在携带了 disktype: ssd标签（Label）的节点上
+
+2.NodeName:该字段被赋值，说明该POD已经被调度过
+
+3.hostAliases
+apiVersion: v1
+kind: Pod
+...
+spec:
+  hostAliases:
+  - ip: "10.1.2.3"
+    hostnames:
+    - "foo.remote"
+    - "bar.remote"
+...
+其实就是/etc/hosts文件定义的域名-IP映射关系
+
+
+4.健康检查探针livenessProbe
+在 Kubernetes 中，你可以为 Pod 里的容器定义一个健康检查“探针”（Probe）。这样，kubelet 就会根据这个 Probe 的返回值决定这个容器的状态，而不是直接以容器进行是否运行（来自 Docker 返回的信息）作为依据。这种机制，是生产环境中保证应用健康存活的重要手段。
+详见liveness-probe-demo.yaml
+
+于是引出了健康检查不通过时的三种策略：
+Always：在任何情况下，只要容器不在运行状态，就自动重启容器；也是默认值
+OnFailure: 只在容器 异常时才自动重启容器；
+Never: 从来不重启容器。
+在实际使用时，我们需要根据应用运行的特性，合理设置这三种恢复策略。
+pod.spec.restartPolicy配置即可
+
+livenessProbe通常会通过http请求的方式进行:
+...
+livenessProbe:
+     httpGet:
+       path: /healthz
+       port: 8080
+       httpHeaders:
+       - name: X-Custom-Header
+         value: Awesome
+       initialDelaySeconds: 3
+       periodSeconds: 3
+这样，由于每个微服务的端口时不一样，检测对应的微服务是否已经健康了。
+
+5.readinessProbe
+readinessProbe 检查结果的成功与否，决定的这个 Pod 是不是能被通过 Service 的方式访问到，而并不影响 Pod 的生命周期。通过readinessProbe的，才会出现endpoint列表中，在endpoint列表中，才能被Service访问到。
+kubectl get ep可查看是否在endpoint列表中
+readinessProbe详细的配置:
+    initialDelaySeconds：容器启动后第一次执行探测是需要等待多少秒。
+    periodSeconds：执行探测的频率。默认是10秒，最小1秒。
+    timeoutSeconds：探测超时时间。默认1秒，最小1秒。
+    successThreshold：探测失败后，最少连续探测成功多少次才被认定为成功。默认是1。对于liveness必须是1。最小值是1。
+    failureThreshold：探测成功后，最少连续探测失败多少次才被认定为失败。默认是3。最小值是1。
+httpGet配置项：
+    host：连接的主机名，默认连接到pod的IP。你可能想在http header中设置”Host”而不是使用IP。
+    scheme：连接使用的schema，默认HTTP。
+    path: 访问的HTTP server的path。
+    httpHeaders：自定义请求的header。HTTP运行重复的header。
+    port：访问的容器的端口名字或者端口号。端口号必须介于1和65525之间
+
+6.PodPresent
+k8s 1.11版本后支持PodPresent, 它可以预定义一些参数，通过selector指定，匹配上的pod都会加上这些参数
+反过来查看查看集群中pod对应的yaml: kubectl get pod website -o yaml
+参考pod-present-demo.yaml
+说明的是，PodPreset 里定义的内容，只会在 Pod API 对象被创建之前追加在这个对象本身上，而不会影响任何 Pod 的控制器的定义。比如，我们现在提交的是一个 nginx-deployment，那么这个 Deployment 对象本身是永远不会被 PodPreset 改变的，被修改的只是这个 Deployment 创建出来的所有 Pod。这一点请务必区分清楚。
+
+
+7. 在 Kubernetes 中，有几种特殊的 Volume，它们存在的意义不是为了存放容器里的数据，也不是用来进行容器和宿主机之间的数据交换。这些特殊 Volume 的作用，是为容器提供预先定义好的数据。所以，从容器的角度来看，这些 Volume 里的信息就是仿佛是被 Kubernetes“投射”（Project）进入容器当中的。这正是 Projected Volume 的含义。
+到目前为止，Kubernetes 支持的 Projected Volume 一共有四种：
+Secret；
+ConfigMap；
+Downward API；
+ServiceAccountToken
+
+1).Secret
+它的作用，是帮你把 Pod 想要访问的加密数据，存放到 Etcd 中。
+然后，你就可以通过在 Pod 的容器里挂载 Volume 的方式，访问到这些 Secret 里保存的信息了。
+kubectl get secrets 查看
+kubectl create secret generic user --from-file=./username.txt 从文件中将username读取到user对象中
+
+2).ConfigMap就是不加密的Secret
+与 Secret 类似的是 ConfigMap，它与 Secret 的区别在于，ConfigMap 保存的是不需要加密的、应用所需的配置信息。而 ConfigMap 的用法几乎与 Secret 完全相同：你可以使用 kubectl create configmap 从文件或者目录创建 ConfigMap，也可以直接编写 ConfigMap 对象的 YAML 文件。
+
+3).Downward API，它的作用是：让 Pod 里的容器能够直接获取到这个 Pod API 对象本身的信息。
+不过，需要注意的是，Downward API 能够获取到的信息，一定是 Pod 里的容器进程启动之前就能够确定下来的信息。而如果你想要获取 Pod 容器运行后才会出现的信息，比如，容器进程的 PID，那就肯定不能使用 Downward API 了，而应该考虑在 Pod 里定义一个 sidecar 容器。
+
+Downward API已经比较丰富了：
+
+a. 使用fieldRef可以声明使用:
+spec.nodeName - 宿主机名字
+status.hostIP - 宿主机IP
+metadata.name - Pod的名字
+metadata.namespace - Pod的Namespace
+status.podIP - Pod的IP
+spec.serviceAccountName - Pod的Service Account的名字
+metadata.uid - Pod的UID
+metadata.labels['<KEY>'] - 指定<KEY>的Label值
+metadata.annotations['<KEY>'] - 指定<KEY>的Annotation值
+metadata.labels - Pod的所有Label
+metadata.annotations - Pod的所有Annotation
+
+b. 使用resourceFieldRef可以声明使用:
+容器的CPU limit
+容器的CPU request
+容器的memory limit
+容器的memory request
+
+4).ServiceAccountToken
+Service Account 对象的作用，就是 Kubernetes 系统内置的一种“服务账户”，它是 Kubernetes 进行权限分配的对象。比如，Service Account A，可以只被允许对 Kubernetes API 进行 GET 操作，而 Service Account B，则可以有 Kubernetes API 的所有操作的权限。
+像这样的 Service Account 的授权信息和文件，实际上保存在它所绑定的一个特殊的 Secret 对象里的。这个特殊的 Secret 对象，就叫作 ServiceAccountToken。任何运行在 Kubernetes 集群上的应用，都必须使用这个 ServiceAccountToken 里保存的授权信息，也就是 Token，才可以合法地访问 API Server。
+Kubernetes 项目的 Projected Volume 其实只有三种，因为第四种 ServiceAccountToken，只是一种特殊的 Secret 而已。
+另外，为了方便使用，Kubernetes 已经为你提供了一个默认“服务账户”（default Service Account）。并且，任何一个运行在 Kubernetes 里的 Pod，都可以直接使用这个默认的 Service Account，而无需显示地声明挂载它。
+
+8.共享参数
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  hostNetwork: true
+  hostIPC: true
+  hostPID: true
+  containers:
+  - name: nginx
+    image: nginx
+  - name: shell
+    image: busybox
+    stdin: true
+    tty: true
+
+在这个 Pod 中，我定义了共享宿主机的 Network、IPC 和 PID Namespace。这就意味着，这个 Pod 里的所有容器，会直接使用宿主机的网络、直接与宿主机进行 IPC 通信、看到宿主机里正在运行的所有进程。
+
+9.ImagePullPolicy
+首先，是 ImagePullPolicy 字段。它定义了镜像拉取的策略。而它之所以是一个 Container 级别的属性，是因为容器镜像本来就是 Container 定义中的一部分。
+ImagePullPolicy 的值默认是 Always，即每次创建 Pod 都重新拉取一次镜像。另外，当容器的镜像是类似于 nginx 或者 nginx:latest 这样的名字时，ImagePullPolicy 也会被认为 Always。
+而如果它的值被定义为 Never 或者 IfNotPresent，则意味着 Pod 永远不会主动拉取这个镜像，或者只在宿主机上不存在这个镜像时才拉取。
+
+10.Lifecycle, 可以在容器状态发生变化时做一些事：
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-demo
+spec:
+  containers:
+  - name: lifecycle-demo-container
+    image: nginx
+    lifecycle:
+      postStart:
+        exec:
+          command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+      preStop:
+        exec:
+          command: ["/usr/sbin/nginx","-s","quit"]

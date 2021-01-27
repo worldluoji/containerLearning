@@ -1,0 +1,78 @@
+1.业务场景：
+  如何在宿主机查看eureka的日志？
+2.给eureka日志指定目录 ：/opt/data/
+
+=====================docker run   volume================================
+1.重新构建eureka
+  docker build -t registry-agan/eureka-server:1.0.0 .
+
+2.什么是volume？
+  就是把docker的数据保存到宿主机的磁盘中，通常说的就是挂载点，或者叫做卷。
+  语法： -v 宿主机目录：容器目录
+3.创建容器
+  docker run -d -p 8761:8761 --name=eureka \
+  --privileged=true \
+  -v /data/container/data/eureka:/opt/data \
+  registry-agan/eureka-server:1.0.0
+  
+=====================dockerfile  volume================================
+			1.给docker file 加volume
+			#1.基础镜像：FROM指令：基础镜像名：tag,例如java:8
+			FROM java:8
+			
+			#2.维护者：格式：MAINTAINER <name>
+			MAINTAINER agan
+			
+			#3.加入过载点
+			VOLUME /opt/data
+			
+			#3.镜像的操作指令
+			# ADD拷贝一个文件到容器中，格式：ADD <src> <dest>
+			ADD eureka-server-0.0.1-SNAPSHOT.jar  /data/app.jar
+			
+			#告诉docker容器暴露端口，在容器启动的时候，需要通过-p 做端口映射
+			#EXPOSE 8761
+			
+			#5.配置容器启动后，执行什么命令
+			ENTRYPOINT ["java","-jar","/data/app.jar"]
+			
+1.重新构建eureka
+  docker build -t registry-agan/eureka-server:1.0.0 .
+  
+2.创建容器
+  docker run -d -p 8761:8761 --name=eureka \
+  --privileged=true \
+  registry-agan/eureka-server:1.0.0
+3.如何找到宿主机的挂载目录？
+  docker inspect eureka
+  
+  "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "cf527694ebafb92426a52f1916b26832b4c8977093083450a96fbccb3d866669",
+                "Source": "/var/lib/docker/volumes/cf527694ebafb92426a52f1916b26832b4c8977093083450a96fbccb3d866669/_data",
+                "Destination": "/opt/data",
+                "Driver": "local",
+                "Mode": "",
+                "RW": true,
+                "Propagation": ""
+            }
+======================总结=============================
+他们有什么区别？
+docker run 是能指定宿主机的目录。
+dockerfile volume 无法指定宿主机的目录，都是自动生成，而且是随机的；默认在/var/lib/docker/volumes/。
+（为什么是随机生成？因为dockerfile无法确定每台宿主机是否都存在目录）
+
+
+最后我们来学习一个真实的案例？
+
+docker run -p 3306:3306 --name mysql \
+-e MYSQL_ROOT_PASSWORD=agan \
+--privileged=true \
+-v /data/container/data/mysql:/var/lib/mysql \
+-d mysql:5.7
+
+  
+
+  
+  

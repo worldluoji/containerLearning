@@ -1,0 +1,26 @@
+1.创建一个zipkin-server
+2.启动命令
+	docker-compose -f docker-compose-zipkin.yml  up -d
+3.看效果
+  http://192.168.0.138:9411/
+  
+4.每个服务的配置文件都加上
+  spring.zipkin.base-url=http://zipkin-server:9411
+  其中 e-book-consumer-order zuul-gateway 是没有进配置中心的，所以要在本地配置。
+  
+5.重启config服务（可以不用重启）
+  看效果 http://192.168.0.138:9030/e-book-trade/default
+
+6.每个服务加入 zipkin的客户端jar包
+		<dependency>
+	      <groupId>org.springframework.cloud</groupId>
+	      <artifactId>spring-cloud-starter-sleuth</artifactId>
+	    </dependency>
+		  <dependency>
+	      <groupId>org.springframework.cloud</groupId>
+	      <artifactId>spring-cloud-sleuth-zipkin</artifactId>
+	    </dependency>
+7.所以服务都要重启
+8.演示 
+http://192.168.0.138:9010/e-book-consumer-order/createOrder
+http://192.168.0.138:9010/e-book-product/product/findAllProduct
