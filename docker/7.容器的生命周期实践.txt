@@ -73,8 +73,8 @@
   删除正在运行容器，强制删除： docker rm -f 容器ID
   
   
-  
-  
+ 查看日志：
+docker logs -f -t --tail 20 容器ID
   
   
   
