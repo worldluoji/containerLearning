@@ -35,3 +35,5 @@ scope 是 Namespaced，即：我们定义的这个 Network 是一个属于 Names
 3）接下来，我还需要让 Kubernetes“认识”这种 YAML 文件里描述的“网络”部分，比如“cidr”（网段），“gateway”（网关）这些字段的含义。
 这时候就需要写Go语言代码了。
 https://github.com/resouer/k8s-controller-custom-resource
+注意要把代码放在你的GOPATH下：
+$GOPATH/src/github.com/<your-name>/k8s-controller-custom-resource
