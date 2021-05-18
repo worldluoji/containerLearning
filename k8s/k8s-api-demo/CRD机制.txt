@@ -1,4 +1,4 @@
-1. 在过去很长一段时间里，在这样一个极其“复杂”的 APIServer 中，添加一个 Kubernetes 风格的 API 资源类型，是一个非常困难的工作。不过，在 Kubernetes v1.7 之后，这个工作就变得轻松得多了。这，当然得益于一个全新的 API 插件机制：CRD。
+﻿1. 在过去很长一段时间里，在这样一个极其“复杂”的 APIServer 中，添加一个 Kubernetes 风格的 API 资源类型，是一个非常困难的工作。不过，在 Kubernetes v1.7 之后，这个工作就变得轻松得多了。这，当然得益于一个全新的 API 插件机制：CRD。
 CRD 的全称是 Custom Resource Definition。顾名思义，它指的就是，允许用户在 Kubernetes 中添加一个跟 Pod、Node 类似的、新的 API 资源类型，即：自定义 API 资源。
 
 2. 实战：为 Kubernetes 添加一个名叫 Network 的 API 资源类型
@@ -34,4 +34,9 @@ scope 是 Namespaced，即：我们定义的这个 Network 是一个属于 Names
 
 3）接下来，我还需要让 Kubernetes“认识”这种 YAML 文件里描述的“网络”部分，比如“cidr”（网段），“gateway”（网关）这些字段的含义。
 这时候就需要写Go语言代码了。
+
+注意要把代码放在你的GOPATH下：
+$GOPATH/src/github.com/<your-name>/k8s-controller-custom-resource
+
 https://github.com/resouer/k8s-controller-custom-resource
+
