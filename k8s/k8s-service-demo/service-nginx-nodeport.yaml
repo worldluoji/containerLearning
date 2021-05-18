@@ -17,5 +17,4 @@ spec:
   selector:
     app: nginx         #Service只管理携带app： nginx的pod
 
-#访问任何一个Service，你只需要使用“<任何一台宿主机的IP地址>:8080”进行访问
-#要运行k8s-nginx-first-demo/nginx-deployment.yaml把pod启动起来
+#要运行k8s-deployment-demo/nginx-deployment.yaml把pod启动起来
