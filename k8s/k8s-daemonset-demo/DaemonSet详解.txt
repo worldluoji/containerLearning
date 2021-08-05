@@ -9,6 +9,8 @@
 3）各种监控组件和日志组件，也必须运行在每一个节点上，负责这个节点上的监控信息和日志搜集。
 
 更重要的是，跟其他编排对象不一样，DaemonSet 开始运行的时机，很多时候比整个 Kubernetes 集群出现的时机都要早。
+当节点加入集群的时候, 就创建了DaemonSet Pod, 不管这个Pod代理的容器有没有启动。
+例如: 当网络插件还没安装的时候, 网络插件的Agent就已经启动了, Agent就是以DaemonSet Pod启动的。
 
 2.如何在指定的 Node 上创建新 Pod？
 1）使用nodeSelector, 但不建议使用，后续该api将被k8s废弃。
@@ -55,10 +57,41 @@ spec:
   - key: node.kubernetes.io/unschedulable
     operator: Exists
     effect: NoSchedule
-被标记了 unschedulable“污点”的 Node，是不会有任何 Pod 被调度上去的（effect: NoSchedule）。可是，DaemonSet 自动地给被管理的 Pod 加上了这个特殊的 Toleration，就使得这些 Pod 可以忽略这个限制，继而保证每个节点上都会被调度一个 Pod。当然，如果这个节点有故障的话，这个 Pod 可能会启动失败，而 DaemonSet 则会始终尝试下去，直到 Pod 启动成功。
+被标记了 unschedulable“污点”的 Node，是不会有任何 Pod 被调度上去的（effect: NoSchedule）。
+可是，DaemonSet 自动地给被管理的 Pod 加上了这个特殊的 Toleration，就使得这些 Pod 可以忽略这个限制，
+继而保证每个节点上都会被调度一个 Pod。当然，如果这个节点有故障的话，这个 Pod 可能会启动失败（比如在业务相关的POD就绪之前，可能DaemonSet是无法正常被调度的）
+而 DaemonSet 则会始终尝试下去，直到 Pod 启动成功。
+DaemonSet 的“过人之处”，其实就是依靠 Toleration 实现的。
 
+总结一下：
+在创建每个 Pod 的时候，DaemonSet 会自动给这个 Pod 加上一个 nodeAffinity，从而保证这个 Pod 只会在指定节点上启动。
+同时，它还会自动给这个 Pod 加上一个 Toleration，从而忽略节点的 unschedulable“污点”。
 
-4. 例子daemon-demo.yaml
+example1:
+
+...
+template:
+    metadata:
+      labels:
+        name: network-plugin-agent
+    spec:
+      tolerations:
+      - key: node.kubernetes.io/network-unavailable
+        operator: Exists
+        effect: NoSchedule
+
+在 Kubernetes 项目中，当一个节点的网络插件尚未安装时，这个节点就会被自动加上名为node.kubernetes.io/network-unavailable的“污点”。
+而通过这样一个 Toleration，调度器在调度这个 Pod 的时候，就会忽略当前节点上的“污点”，从而成功地将网络插件的 Agent 组件调度到这台机器上启动起来。
+你也可以在 Pod 模板里加上更多种类的 Toleration，从而利用 DaemonSet 达到自己的目的。
+
+这是因为在默认情况下，Kubernetes 集群不允许用户在 Master 节点部署 Pod。
+因为，Master 节点默认携带了一个叫作node-role.kubernetes.io/master的“污点”。
+所以，为了能在 Master 节点上部署 DaemonSet 的 Pod，我就必须让这个 Pod“容忍”这个“污点”：
+tolerations:
+- key: node-role.kubernetes.io/master
+  effect: NoSchedule
+
+4. example2: daemon-demo.yaml
 k8s.gcr.io/fluentd-elasticsearch镜像下不到，
 有人用 mirrorgooglecontainers/前头的镜像替代“科学上网”，
 于是访问 https://hub.docker.com/r/镜像名/tags 来查看替代镜像的所有版本。

@@ -73,3 +73,5 @@ $ kubectl get pods -l app=nginx
 NAME                                READY     STATUS    RESTARTS   AGE
 nginx-deployment-67594d6bf6-9gdvr   1/1       Running   0          10m
 nginx-deployment-67594d6bf6-v6j7w   1/1       Running   0          10m
+
+12. Kubernetes 里比较长的 API 对象都有短名字，比如 DaemonSet 对应的是 ds，Deployment 对应的是 deploy。
