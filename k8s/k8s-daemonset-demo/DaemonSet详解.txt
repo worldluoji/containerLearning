@@ -84,7 +84,7 @@ template:
 而通过这样一个 Toleration，调度器在调度这个 Pod 的时候，就会忽略当前节点上的“污点”，从而成功地将网络插件的 Agent 组件调度到这台机器上启动起来。
 你也可以在 Pod 模板里加上更多种类的 Toleration，从而利用 DaemonSet 达到自己的目的。
 
-这是因为在默认情况下，Kubernetes 集群不允许用户在 Master 节点部署 Pod。
+在默认情况下，Kubernetes 集群不允许用户在 Master 节点部署 Pod。
 因为，Master 节点默认携带了一个叫作node-role.kubernetes.io/master的“污点”。
 所以，为了能在 Master 节点上部署 DaemonSet 的 Pod，我就必须让这个 Pod“容忍”这个“污点”：
 tolerations:
@@ -99,3 +99,70 @@ https://hub.docker.com/r/mirrorgooglecontainers/fluentd-elasticsearch/tags
 找到了以下两个版本来做实验。
 mirrorgooglecontainers/fluentd-elasticsearch:v2.0.0
 mirrorgooglecontainers/fluentd-elasticsearch:v2.4.0
+
+需要注意的是，在 DaemonSet 上，我们一般都应该加上 resources 字段，来限制它的 CPU 和内存使用，防止它占用过多的宿主机资源。
+
+5. 版本
+DaemonSet 和 Deployment 一样，也有 DESIRED、CURRENT 等多个状态字段。
+这也就意味着，DaemonSet 可以像 Deployment 那样，进行版本管理。
+这个版本，可以使用 kubectl rollout history 看到。
+
+$ kubectl rollout history daemonset fluentd-elasticsearch -n kube-system
+daemonsets "fluentd-elasticsearch"
+REVISION  CHANGE-CAUSE
+1         <none>
+
+把这个 DaemonSet 的容器镜像版本升级到 v2.2.0：
+$ kubectl set image ds/fluentd-elasticsearch fluentd-elasticsearch=k8s.gcr.io/fluentd-elasticsearch:v2.2.0 --record -n=kube-system
+升级命令后面加上了–record 参数，所以这次升级使用到的指令就会自动出现在 DaemonSet 的 rollout history 里面
+
+使用 kubectl rollout status 命令看到这个“滚动更新”的过程：
+$ kubectl rollout status ds/fluentd-elasticsearch -n kube-system
+Waiting for daemon set "fluentd-elasticsearch" rollout to finish: 0 out of 2 new pods have been updated...
+Waiting for daemon set "fluentd-elasticsearch" rollout to finish: 0 out of 2 new pods have been updated...
+Waiting for daemon set "fluentd-elasticsearch" rollout to finish: 1 of 2 updated pods are available...
+daemon set "fluentd-elasticsearch" successfully rolled out
+
+有了版本号，你也就可以像 Deployment 一样，将 DaemonSet 回滚到某个指定的历史版本了。
+版本怎么来的？
+
+在 Kubernetes 项目中，任何你觉得需要记录下来的状态，都可以被用 API 对象的方式实现。当然，“版本”也不例外。
+Kubernetes v1.7 之后添加了一个 API 对象，名叫 ControllerRevision，专门用来记录某种 Controller 对象的版本。
+
+$ kubectl get controllerrevision -n kube-system -l name=fluentd-elasticsearch
+NAME                               CONTROLLER                             REVISION   AGE
+fluentd-elasticsearch-64dc6799c9   daemonset.apps/fluentd-elasticsearch   2          1h
+
+使用 kubectl describe 查看这个 ControllerRevision 对象：
+$ kubectl describe controllerrevision fluentd-elasticsearch-64dc6799c9 -n kube-system
+Name:         fluentd-elasticsearch-64dc6799c9
+Namespace:    kube-system
+Labels:       controller-revision-hash=2087235575
+              name=fluentd-elasticsearch
+Annotations:  deprecated.daemonset.template.generation=2
+              kubernetes.io/change-cause=kubectl set image ds/fluentd-elasticsearch fluentd-elasticsearch=k8s.gcr.io/fluentd-elasticsearch:v2.2.0 --record=true --namespace=kube-system
+API Version:  apps/v1
+Data:
+  Spec:
+    Template:
+      $ Patch:  replace
+      Metadata:
+        Creation Timestamp:  <nil>
+        Labels:
+          Name:  fluentd-elasticsearch
+      Spec:
+        Containers:
+          Image:              k8s.gcr.io/fluentd-elasticsearch:v2.2.0
+          Image Pull Policy:  IfNotPresent
+          Name:               fluentd-elasticsearch
+...
+Revision:                  2
+Events:                    <none>
+这个 ControllerRevision 对象，实际上是在 Data 字段保存了该版本对应的完整的 DaemonSet 的 API 对象。可以看到，在这里我还加上了一个
+
+将这个 DaemonSet 回滚到 Revision=1 时的状态：
+$ kubectl rollout undo daemonset fluentd-elasticsearch --to-revision=1 -n kube-system
+daemonset.extensions/fluentd-elasticsearch rolled back
+
+这个 kubectl rollout undo 操作，实际上相当于读取到了 Revision=1 的 ControllerRevision 对象
+保存的 Data 字段。而这个 Data 字段里保存的信息，就是 Revision=1 时这个 DaemonSet 的完整 API 对象。

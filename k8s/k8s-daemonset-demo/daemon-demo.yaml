@@ -46,5 +46,5 @@ spec:
   # 可以看到，DaemonSet 跟 Deployment 其实非常相似，只不过是没有 replicas 字段；
   # 它也使用 selector 选择管理所有携带了 name=fluentd-elasticsearch 标签的 Pod。
   # 而这些 Pod 的模板，也是用 template 字段定义的。
-  # 在这个字段中，我们定义了一个使用 fluentd-elasticsearch:1.20 镜像的容器，
+  # 在这个字段中，我们定义了一个使用 fluentd-elasticsearch:2.0.0 镜像的容器，
   # 而且这个容器挂载了两个 hostPath 类型的 Volume，分别对应宿主机的 /var/log 目录和 /var/lib/docker/containers 目录。
