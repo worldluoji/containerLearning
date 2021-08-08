@@ -1,0 +1,28 @@
+k8s kubectl run命令使用详解
+创建并运行一个指定的可复制的镜像。 创建一个deployment或者job来管理创建的容器。
+使用方法：
+kubectl run NAME --image=image [--env="key=value"] [--port=port] [--replicas=replicas] [--dry-run=bool] 
+[--overrides=inline-json] [--command] -- [COMMAND] [args...]
+
+示例：
+#创建一个名为ns的namespace，并创建一个名为cache的pod, 使用lfccncf/redis镜像，tag为3-alpine，
+#其namesapce为之前创建好的ns,对外暴露6379端口，如果退出不会重启
+kubectl create ns core 
+kubectl run cache --image=lfccncf/redis:3-alpine -n core --restart=Never --port=6379
+
+# 运行一个 hazelcast 单个实例，并设置容器的环境变量"DNS_DOMAIN=cluster" and "POD_NAMESPACE=default"。
+kubectl run hazelcast --image=hazelcast --env="DNS_DOMAIN=cluster" --env="POD_NAMESPACE=default"
+
+# 启动一个 replicated 实例去复制 nginx。
+kubectl run nginx --image=nginx --replicas=5
+
+# 试运行。不创建他们的情况下，打印出所有相关的 API 对象。
+kubectl run nginx --image=nginx --dry-run
+
+# 用可解析的 JSON 来覆盖加载 `deployment` 的 `spec`，来运行一个 nginx 单个实例。
+kubectl run nginx --image=nginx --overrides='{ "apiVersion": "v1", "spec": { ... } }'
+
+# 运行一个在前台运行的 busybox 单个实例，如果退出不会重启。
+kubectl run -i --tty busybox --image=busybox --restart=Never
+
+参考：http://kubernetes.kansea.com/docs/user-guide/kubectl/kubectl_run/
