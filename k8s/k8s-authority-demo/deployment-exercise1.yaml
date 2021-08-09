@@ -1,0 +1,55 @@
+# kubectl create ns production-app
+
+# 预创建一个deployment，名字叫app-a, 将ymal脚本写到deployment-exercise1.yaml中
+# kubectl create -n production-app deployment app-a --image=nginx --dry-run=client -oyaml > deployment-exercise1.yaml
+# kubectl apply -f deployment-exercise1.yaml
+
+#kubectl create -n production-app serviceaccount app
+#kubectl get serviceaccount -n production-app
+
+#更新deployment app-a 的serviceaccount为app
+#kubectl set serviceaccount deployment app-a app -n production-app
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: app-a
+  name: app-a
+  namespace: production-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-a
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: app-a
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+status: {}
+
+#kubectl get pods -n  production-app
+#kubectl describe pod xxx查看SecretName:
+# Volumes:
+#   app-token-ksdjh:
+#     Type:        Secret (a volume populated by a Secret)
+#     SecretName:  app-token-ksdjh
+
+#再通过kubectl describe serviceaccounts app -n production-app 查看serviceaccount，tokens和上面是一样的：
+# Name:                app
+# Namespace:           production-app
+# Labels:              <none>
+# Annotations:         <none>
+# Image pull secrets:  <none>
+# Mountable secrets:   app-token-ksdjh
+# Tokens:              app-token-ksdjh
+# Events:              <none>
+

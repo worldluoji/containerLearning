@@ -1,16 +1,21 @@
-1. Kubernetes 中所有的 API 对象，都保存在 Etcd 里。可是，对这些 API 对象的操作，却一定都是通过访问 kube-apiserver 实现的。其中一个非常重要的原因，就是你需要 APIServer 来帮助你做授权工作。
+1. Kubernetes 中所有的 API 对象，都保存在 Etcd 里。可是，对这些 API 对象的操作，
+却一定都是通过访问 kube-apiserver 实现的。其中一个非常重要的原因，就是你需要 APIServer 来帮助你做授权工作。
 在 Kubernetes 项目中，负责完成授权（Authorization）工作的机制，就是 RBAC。
 
 2. RBAC的核心：
 Role：角色，它其实是一组规则，定义了一组对 Kubernetes API 对象的操作权限。
 Subject：被作用者，既可以是“人”，也可以是“机器”，也可以是你在 Kubernetes 里定义的“用户”。
-RoleBinding：定义了“被作用者”和“角色”的绑定关系。RoleBinding 对象就可以直接通过名字，来引用我们前面定义的 Role 对象（example-role），从而定义了“被作用者（Subject）”和“角色（Role）”之间的绑定关系。
+RoleBinding：定义了“被作用者”和“角色”的绑定关系。RoleBinding 对象就可以直接通过名字，
+来引用我们前面定义的 Role 对象（example-role），从而定义了“被作用者（Subject）”和“角色（Role）”之间的绑定关系。
 
-3. Namespace 是 Kubernetes 项目里的一个逻辑管理单位。不同 Namespace 的 API 对象，在通过 kubectl 命令进行操作的时候，是互相隔离开的。比如，kubectl get pods -n mynamespace。
-当然，这仅限于逻辑上的“隔离”，Namespace 并不会提供任何实际的隔离或者多租户能力。而在前面文章中用到的大多数例子里，我都没有指定 Namespace，那就是使用的是默认 Namespace：default。
+3. Namespace 是 Kubernetes 项目里的一个逻辑管理单位。
+不同 Namespace 的 API 对象，在通过 kubectl 命令进行操作的时候，是互相隔离开的。比如，kubectl get pods -n mynamespace。
+当然，这仅限于逻辑上的“隔离”，Namespace 并不会提供任何实际的隔离或者多租户能力。
+在前面文章中用到的大多数例子里，我都没有指定 Namespace，那就是使用的是默认 Namespace：default。
 
-
-4. 对于非 Namespaced（Non-namespaced）对象（比如：Node），或者，某一个 Role 想要作用于所有的 Namespace 的时候，我们又该如何去做授权呢？这时候，我们就必须要使用 ClusterRole 和 ClusterRoleBinding 这两个组合了。这两个 API 对象的用法跟 Role 和 RoleBinding 完全一样。只不过，它们的定义里，没有了 Namespace 字段。
+4. 对于非 Namespaced（Non-namespaced）对象（比如：Node），或者，某一个 Role 想要作用于所有的 Namespace 的时候
+我们又该如何去做授权呢？这时候，我们就必须要使用 ClusterRole 和 ClusterRoleBinding 这两个组合了。
+这两个 API 对象的用法跟 Role 和 RoleBinding 完全一样。只不过，它们的定义里，没有了 Namespace 字段。
 
 5. Role的rules规则可以细化
 rules:
@@ -20,14 +25,13 @@ rules:
   verbs: ["get"]
 这个例子就表示，这条规则的“被作用者”，只对名叫“my-config”的 ConfigMap 对象，有进行 GET 操作的权限。
 
-6. 在大多数时候，我们其实都不太使用“用户”这个功能，而是直接使用 Kubernetes 里的“内置用户”。这个由 Kubernetes 负责管理的“内置用户”，正是我们前面曾经提到过的：ServiceAccount。
-我们可以定义自己的sv，参考my_sv.yaml
+6. 在大多数时候，我们其实都不太使用“用户”这个功能，而是直接使用 Kubernetes 里的“内置用户”。
+这个由 Kubernetes 负责管理的“内置用户”，正是我们前面曾经提到过的：ServiceAccount。
 
 7. 例子：
 $ kubectl create -f svc-account.yaml
 $ kubectl create -f role-binding.yaml
 $ kubectl create -f role.yaml
-
 
 $ kubectl get sa -n mynamespace -o yaml
 - apiVersion: v1
@@ -42,8 +46,9 @@ $ kubectl get sa -n mynamespace -o yaml
   - name: example-sa-token-vmfg6
 
 
- 可以看到，Kubernetes 会为一个 ServiceAccount 自动创建并分配一个 Secret 对象，即：上述 ServiceAcount 定义里最下面的 secrets 字段。这个 Secret，就是这个 ServiceAccount 对应的、用来跟 APIServer 进行交互的授权文件，我们一般称它为：Token。Token 文件的内容一般是证书或者密码，它以一个 Secret 对象的方式保存在 Etcd 当中。
-
+可以看到，Kubernetes 会为一个 ServiceAccount 自动创建并分配一个 Secret 对象，即：上述 ServiceAcount 定义里最下面的 secrets 字段。
+这个 Secret，就是这个 ServiceAccount 对应的、用来跟 APIServer 进行交互的授权文件，我们一般称它为：Token。
+Token 文件的内容一般是证书或者密码，它以一个 Secret 对象的方式保存在 Etcd 当中。
 
 最后用POD声明serviceAccountName即可：
 apiVersion: v1
@@ -56,7 +61,6 @@ spec:
   - name: nginx
     image: nginx:1.7.9
   serviceAccountName: example-sa
-
 
 $ kubectl describe pod sa-token-test -n mynamespace
 Name:               sa-token-test
@@ -75,7 +79,8 @@ ca.crt namespace  token
 如上所示，容器里的应用，就可以使用这个 ca.crt 来访问 APIServer 了。
 更重要的是，此时它只能够做 GET、WATCH 和 LIST 操作。因为 example-sa 这个 ServiceAccount 的权限，已经被我们绑定了 Role 做了限制。
 
-8. k8s默认的ServiceAccount并没有关联任何 Role。也就是说，此时它有访问 APIServer 的绝大多数权限。当然，这个访问所需要的 Token，还是默认 ServiceAccount 对应的 Secret 对象为它提供的。
+8. k8s默认的ServiceAccount并没有关联任何 Role。也就是说，此时它有访问 APIServer 的绝大多数权限。
+当然，这个访问所需要的 Token，还是默认 ServiceAccount 对应的 Secret 对象为它提供的。
 $kubectl describe sa default  查看默认ServiceAccount权限。
 所以，在生产环境中，我强烈建议你为所有 Namespace 下的默认 ServiceAccount，绑定一个只读权限的 Role。
 
@@ -101,8 +106,11 @@ subjects:
 
 就意味着这个 Role 的权限规则，作用于整个系统里的所有 ServiceAccount。
 
-10. 最后，值得一提的是，在 Kubernetes 中已经内置了很多个为系统保留的 ClusterRole，它们的名字都以 system: 开头。你可以通过 kubectl get clusterroles 查看到它们。
-一般来说，这些系统 ClusterRole，是绑定给 Kubernetes 系统组件对应的 ServiceAccount 使用的。比如，其中一个名叫 system:kube-scheduler 的 ClusterRole，定义的权限规则是 kube-scheduler（Kubernetes 的调度器组件）运行所需要的必要权限。你可以通过如下指令查看这些权限的列表：
+10. 在 Kubernetes 中已经内置了很多个为系统保留的 ClusterRole
+它们的名字都以 system: 开头。你可以通过 kubectl get clusterroles 查看到它们。
+一般来说，这些系统 ClusterRole，是绑定给 Kubernetes 系统组件对应的 ServiceAccount 使用的。
+比如，其中一个名叫 system:kube-scheduler 的 ClusterRole，定义的权限规则是 kube-scheduler（Kubernetes 的调度器组件）运行所需要的必要权限。
+你可以通过如下指令查看这些权限的列表：
 kubectl describe clusterrole system:kube-scheduler
 
 Kubernetes 还提供了四个预先定义好的 ClusterRole 来供用户直接使用：
@@ -111,4 +119,6 @@ admin；
 edit；
 view。
 
-通过它们的名字，你应该能大致猜出它们都定义了哪些权限。比如，这个名叫 view 的 ClusterRole，就规定了被作用者只有 Kubernetes API 的只读权限。而我还要提醒你的是，上面这个 cluster-admin 角色，对应的是整个 Kubernetes 项目中的最高权限（verbs=*），要慎用。
+通过它们的名字，你应该能大致猜出它们都定义了哪些权限。
+比如，这个名叫 view 的 ClusterRole，就规定了被作用者只有 Kubernetes API 的只读权限。
+上面这个 cluster-admin 角色，对应的是整个 Kubernetes 项目中的最高权限（verbs=*），要慎用。
