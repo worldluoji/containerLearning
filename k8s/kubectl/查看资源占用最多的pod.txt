@@ -1,0 +1,4 @@
+在namespace load 里查看CPU使用CPU最大的POD,并把Pod名字结果写入/opt/KDOB00301/pod.txt 
+$ Kubectl get pod -n production-app -o wide 
+$ kubectl top pod -n production-app --sort-by=cpu
+$ echo “Name of POD” > /opt/KDOB00301/pod.tx
