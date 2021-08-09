@@ -22,7 +22,9 @@ Requests CPU 的值就是控制组中的 cpu.shares 的值。
 cpu=1 指的就是，这个 Pod 的 CPU 限额是 1 个 CPU。当然，具体“1 个 CPU”在宿主机上如何解释，
 是 1 个 CPU 核心，还是 1 个 vCPU，还是 1 个 CPU 的超线程（Hyperthread），完全取决于宿主机的 CPU 实现方式。
 当然，你也可以直接把这个配置写成 cpu=0.5。
-但在实际使用时，我还是推荐你使用 500m 的写法，毕竟这才是 Kubernetes 内部通用的 CPU 表示方式。
+但在实际使用时，我还是推荐你使用 500m 的写法，原因如下：
+表达式 0.5 等价于表达式 500m， 可以看作 “500 millicpu”。有些人说成是“五百毫 cpu”，其实说的是同样的事情。 
+具有小数点（如 0.5）的请求由 API 转换为 500m；最大精度是 1m。 因此，或许你应该优先考虑使用 500m 的形式。
 
 对于内存资源来说，它的单位是 bytes。Kubernetes 支持你使用 Ei、Pi、Ti、Gi、Mi、Ki（或者 E、P、T、G、M、K）的方式来作为 bytes 的值。
 比如，在我们的例子里，Memory requests 的值就是 64MiB (2 的 26 次方 bytes = 64MiB) 。
