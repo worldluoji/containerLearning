@@ -1,0 +1,20 @@
+#kubectl create ns pod-resources
+# kubectl run nginx-resources --image=nginx -n pod-resources --dry-run=client -oyaml > pod-resource-exercise.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx-resources
+  name: nginx-resources
+  namespace: pod-resources
+spec:
+  containers:
+  - image: nginx
+    name: nginx-resources
+    resources: 
+      requests:
+        cpu: "300m"
+        memory: "1Gi"
+  dnsPolicy: ClusterFirst
+status: {}

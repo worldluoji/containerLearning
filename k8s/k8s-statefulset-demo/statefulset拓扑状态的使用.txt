@@ -7,9 +7,12 @@ StatefulSet就是记录下这些状态，以便POD重建时能恢复这些状态
 
 
 3.  "Normal Service"和"Headless Service“的应用场景是什么？
-“Headless Service不需要分配一个 VIP，而是可以直接以 DNS 记录的方式解析出被代理 Pod 的 IP 地址”，同时由于其编号的严格规定，会按照编号顺序完成创建工作。
-如果在部署StatefulSet的时候，必须使用"Headless Service" ，而不是"Normal Service”。
-所谓的 Headless Service，其实仍是一个标准 Service 的 YAML 文件。只不过，它的 clusterIP 字段的值是：None，即：这个 Service，没有一个 VIP 作为“头”。这也就是 Headless 的含义。所以，这个 Service 被创建后并不会被分配一个 VIP，而是会以 DNS 记录的方式暴露出它所代理的 Pod。
+Headless Service不需要分配一个 VIP，而是可以直接以 DNS 记录的方式解析出被代理 Pod 的 IP 地址，
+同时由于其编号的严格规定，会按照编号顺序完成创建工作。
+如果在部署StatefulSet的时候，必须使用"Headless Service" ，而不是"Normal Service"。
+所谓的 Headless Service，其实仍是一个标准 Service 的 YAML 文件。只不过，它的 clusterIP 字段的值是：None，
+即：这个 Service，没有一个 VIP 作为“头”。这也就是 Headless 的含义。
+所以，这个 Service 被创建后并不会被分配一个 VIP，而是会以 DNS 记录的方式暴露出它所代理的 Pod。
 
 
 4. 一个例子
@@ -36,8 +39,10 @@ web-1     1/1       Running   0         20s
 
 可见，这些POD的创建是严格按照顺序进行的，web-0进入Running状态后，web-1才开始创建。
 kubectl 的 -w 参数，即：Watch 功能，实时查看 StatefulSet 创建两个有状态实例的过程。
-更重要的是，这些 Pod 的创建，也是严格按照编号顺序进行的。比如，在 web-0 进入到 Running 状态、并且细分状态（Conditions）成为 Ready 之前，web-1 会一直处于 Pending 状态。
-通过这种方法，Kubernetes 就成功地将 Pod 的拓扑状态（比如：哪个节点先启动，哪个节点后启动），按照 Pod 的“名字 + 编号”的方式固定了下来。此外，Kubernetes 还为每一个 Pod 提供了一个固定并且唯一的访问入口，即：这个 Pod 对应的 DNS 记录。
+更重要的是，这些 Pod 的创建，也是严格按照编号顺序进行的。
+比如，在 web-0 进入到 Running 状态、并且细分状态（Conditions）成为 Ready 之前，web-1 会一直处于 Pending 状态。
+通过这种方法，Kubernetes 就成功地将 Pod 的拓扑状态（比如：哪个节点先启动，哪个节点后启动），按照 Pod 的“名字 + 编号”的方式固定了下来。
+此外，Kubernetes 还为每一个 Pod 提供了一个固定并且唯一的访问入口，即：这个 Pod 对应的 DNS 记录。
 
 如果我们再用 nslookup 命令，查看一下这个新 Pod 对应的 Headless Service：
 $ kubectl run -i --tty --image busybox dns-test --restart=Never --rm /bin/sh 
@@ -54,7 +59,8 @@ Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
 
 Name:      web-1.nginx
 Address 1: 10.244.2.8
-不过，相信你也已经注意到了，尽管 web-0.nginx 这条记录本身不会变，但它解析到的 Pod 的 IP 地址，并不是固定的。这就意味着，对于“有状态应用”实例的访问，你必须使用 DNS 记录或者 hostname 的方式，而绝不应该直接访问这些 Pod 的 IP 地址。
+不过，相信你也已经注意到了，尽管 web-0.nginx 这条记录本身不会变，但它解析到的 Pod 的 IP 地址，并不是固定的。
+这就意味着，对于“有状态应用”实例的访问，你必须使用 DNS 记录或者 hostname 的方式，而绝不应该直接访问这些 Pod 的 IP 地址。
 
 问题:
 ** server can't find web-0.nginx: NXDOMAIN
