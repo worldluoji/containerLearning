@@ -1,0 +1,30 @@
+#kubectl create configmap another-config --from-literal=key1=value2
+#kubectl run nginx-configmap --image=nginx --dry-run=client -oyaml > configmap-exercise.yaml
+#kubectl apply -f configmap-exercise.yaml
+#kubectl exec -it nginx-configmap /bin/bash
+# cat /yet/another/path then you can see value2
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx-configmap
+  name: nginx-configmap
+spec:
+  containers:
+  - image: nginx
+    name: nginx-configmap
+    resources: {}
+    volumeMounts:
+    - name: config
+      mountPath: "/yet/another"
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes:
+  - name: config
+    configMap:
+      name: another-config
+      items: 
+      - key: key1
+        path: path
+      
