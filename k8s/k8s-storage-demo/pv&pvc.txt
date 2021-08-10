@@ -1,3 +1,6 @@
+可以先记住这样一个结论：PVC 其实就是一种特殊的 Volume。
+只不过一个 PVC 具体是什么类型的 Volume，要在跟某个 PV 绑定之后才知道。
+
 1. 其中，PV 描述的，是持久化存储数据卷。这个 API 对象主要定义的是一个持久化存储在宿主机上的目录，比如一个 NFS 的挂载目录。
 通常情况下，PV 对象是由运维人员事先创建在 Kubernetes 集群里待用的。比如，运维人员可以定义这样一个 NFS 类型的 PV，如下所示：
 
@@ -30,6 +33,12 @@ spec:
   resources:
     requests:
       storage: 1Gi
+
+The access modes are:
+ReadWriteOnce -- the volume can be mounted as read-write by a single node
+ReadOnlyMany -- the volume can be mounted read-only by many nodes
+ReadWriteMany -- the volume can be mounted as read-write by many nodes
+ReadWriteOncePod -- the volume can be mounted as read-write by a single Pod. This is only supported for CSI volumes and Kubernetes version 1.22+.
 
 
 3. 用户创建的 PVC 要真正被容器使用起来，就必须先和某个符合条件的 PV 进行绑定
