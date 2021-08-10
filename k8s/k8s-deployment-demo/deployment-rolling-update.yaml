@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: web1
+  name: web1
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: web1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+       maxSurge: 2
+       maxUnavailable: 5%
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web1
+    spec:
+      containers:
+      - image: nginx:1.13
+        name: nginx
+        resources: {}
+status: {}
+
+# 滚动更新到nginx版本1.16.1
+# kubectl set image deployment/web1 nginx=1.16.1 --record
+
+# 查看滚动状态
+# kubectl rollout status deployment web1
+
+#  查看滚动更新的版本
+#  kubectl rollout history deployment web1
+
+# 回退到版本1
+# kubectl rollout undo  deployment web1 --to-revision=1
+
+#可以通过kubectl get deployment web1 -oyaml 查看nginx版本， 或者先查pod，再根据pod去看nginx版本
+
+#kubectl edit可以实现滚动更新
+# kubectl edit deployments.apps web1
+# 这时候可以直接对yaml进行编辑， 如果修改了image版本，会自动发起滚动更新
