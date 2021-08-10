@@ -1,0 +1,34 @@
+#  kubectl create deployment api -n kdpd00201 --image=ifccncf/nginx:1.13.7 --port=80 --replicas=3 --dry-run=client -oyaml > create-deployment-exercise2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: api
+  name: api
+  namespace: kdpd00201
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: api
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+        env:
+        - name: NGINX_PORT
+          value: "80"
+        ports:
+        - containerPort: 80
+status: {}
+
+#注意containerPort是整型，不能用$(NGINX_PORT)代替80
+#同时注意env的使用是 name-value键值对数组，自然可以有多个
