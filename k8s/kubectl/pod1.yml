@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: app1
+  name: app1
+spec:
+  containers:
+  - image: ifccncf/arg-output
+    name: appcont
+    args: ["-Q --dep test"]
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+
+#查看pod概要，并以json形式输出到out.json中
+#kubectl get pod app1 -o json > out.json
+#kubectl get pod --help可以查看帮助信息，-o的用法
