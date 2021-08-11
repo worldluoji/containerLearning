@@ -1,0 +1,28 @@
+# kubectl create ns kdn00101
+# 对应的deployment为 depfo-service-nodeport:
+# kubectl create deployment kdsn00101-deployment -n kdn00101 --image=nginx --replicas=3 --port=80 --dry-run=client -oyaml > depfor-service-nodeport.yaml
+# kubectl create service nodeport rover --tcp=8888:80 --dry-run=client -oyaml > service-nodeport-exercise.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: rover
+  name: rover
+  namespace: kdsn00101
+spec:
+  ports:
+  - name: 8888-80
+    port: 8888
+    protocol: TCP
+    targetPort: 80
+  selector:
+    tier: webFrontEnd
+  type: NodePort
+status:
+  loadBalancer: {}
+
+#Service selector中的tier: webFrontEnd，对应deployment spec pod模板中的
+# metadata: 
+#   labels:
+#     tier: webFrontEnd       

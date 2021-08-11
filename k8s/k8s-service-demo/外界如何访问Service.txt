@@ -1,5 +1,6 @@
 Service只是解决了POD的负载均衡问题，Service的访问信息在 Kubernetes 集群之外，其实是无效的。
-所以，在使用 Kubernetes 的 Service 时，一个必须要面对和解决的问题就是：如何从外部（Kubernetes 集群之外），访问到 Kubernetes 里创建的 Service？
+所以，在使用 Kubernetes 的 Service 时，一个必须要面对和解决的问题就是：
+如何从外部（Kubernetes 集群之外），访问到 Kubernetes 里创建的 Service？
 
 1. 使用nodePort
 参考service-nginx-nodeport.yaml
@@ -26,7 +27,8 @@ ingress-nginx ingress-nginx NodePort 10.105.192.34 <none> 8080:30080/TCP,8443:30
 还有，就是port参数是必要指定的，nodePort即使是显式指定，也必须是在指定范围内。
 
 需要注意的是，在 NodePort 方式下，Kubernetes 会在 IP 包离开宿主机发往目的 Pod 时，对这个 IP 包做一次 SNAT 操作。
-也就是说，它给即将离开这台主机的 IP 包，进行了一次 SNAT 操作，将这个 IP 包的源地址替换成了这台宿主机上的 CNI 网桥地址，或者宿主机本身的 IP 地址（如果 CNI 网桥不存在的话）。 一句话，目的就是为了解决“访问回路”的问题：
+也就是说，它给即将离开这台主机的 IP 包，进行了一次 SNAT 操作，将这个 IP 包的源地址替换成了这台宿主机上的 CNI 网桥地址，
+或者宿主机本身的 IP 地址（如果 CNI 网桥不存在的话）。 一句话，目的就是为了解决“访问回路”的问题：
 
            client
              \ ^
@@ -38,12 +40,16 @@ ingress-nginx ingress-nginx NodePort 10.105.192.34 <none> 8080:30080/TCP,8443:30
     v |
  endpoint
 
-可是，如果没有做 SNAT 操作的话，这时候，被转发来的 IP 包的源地址就是 client 的 IP 地址。所以此时，Pod 就会直接将回复发给client。对于 client 来说，它的请求明明发给了 node 2，收到的回复却来自 node 1，这个 client 很可能会报错。
+可是，如果没有做 SNAT 操作的话，这时候，被转发来的 IP 包的源地址就是 client 的 IP 地址。
+所以此时，Pod 就会直接将回复发给client。对于 client 来说，它的请求明明发给了 node 2，收到的回复却来自 node 1，
+这个 client 很可能会报错。
 
 
 2. 从外部访问 Service 的第二种方式：指定一个 LoadBalancer 类型的 Service。
 适用于公有云上的 Kubernetes 服务。
-在公有云提供的 Kubernetes 服务里，都使用了一个叫作 CloudProvider 的转接层，来跟公有云本身的 API 进行对接。所以，在上述 LoadBalancer 类型的 Service 被提交后，Kubernetes 就会调用 CloudProvider 在公有云上为你创建一个负载均衡服务，并且把被代理的 Pod 的 IP 地址配置给负载均衡服务做后端。
+在公有云提供的 Kubernetes 服务里，都使用了一个叫作 CloudProvider 的转接层，来跟公有云本身的 API 进行对接。
+所以，在上述 LoadBalancer 类型的 Service 被提交后，Kubernetes 就会调用 CloudProvider 在公有云上为你创建一个负载均衡服务，
+并且把被代理的 Pod 的 IP 地址配置给负载均衡服务做后端。
 ---
 kind: Service
 apiVersion: v1
@@ -67,9 +73,11 @@ spec:
   type: ExternalName
   externalName: my.database.example.com
 
-  这时候，当你通过 Service 的 DNS 名字访问它的时候，比如访问：my-service.default.svc.cluster.local。那么，Kubernetes 为你返回的就是my.database.example.com。所以说，ExternalName 类型的 Service，其实是在 kube-dns 里为你添加了一条 CNAME 记录。这时，访问 my-service.default.svc.cluster.local 就和访问 my.database.example.com 这个域名是一个效果了。
-
-  也可以给Service分配共有IP地址：
+这时候，当你通过 Service 的 DNS 名字访问它的时候，比如访问：my-service.default.svc.cluster.local。
+那么，Kubernetes 为你返回的就是my.database.example.com。
+所以说，ExternalName 类型的 Service，其实是在 kube-dns 里为你添加了一条 CNAME 记录。
+这时，访问 my-service.default.svc.cluster.local 就和访问 my.database.example.com 这个域名是一个效果了。
+也可以给Service分配共有IP地址：
 
 apiVersion: v1
 kind: Service
@@ -86,4 +94,5 @@ spec:
   externalIPs:
   - 80.11.12.10
 
- 在上述 Service 中，我为它指定的 externalIPs=80.11.12.10，那么此时，你就可以通过访问 80.11.12.10:80 访问到被代理的 Pod 了。不过，在这里 Kubernetes 要求 externalIPs 必须是至少能够路由到一个 Kubernetes 的节点。
+ 在上述Service中，为它指定的externalIPs=80.11.12.10，就可以通过访问80.11.12.10:80访问到被代理的Pod。
+ 不过，在这里 Kubernetes 要求 externalIPs 必须是至少能够路由到一个 Kubernetes 的节点。

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: kdsn00101-deployment
+  name: kdsn00101-deployment
+  namespace: kdsn00101
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kdsn00101-deployment
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: kdsn00101-deployment
+        tier: webFrontEnd
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+        ports:
+        - containerPort: 80
+status: {}
