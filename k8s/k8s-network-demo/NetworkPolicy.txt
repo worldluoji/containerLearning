@@ -1,0 +1,97 @@
+1. NetworkPolicy
+NetworkPolicies are an application-centric construct which allow you to specify 
+how a pod is allowed to communicate with various network "entities" over the network.
+简单的说，就是做集群中，POD的流量进出的控制。
+
+Network policies are implemented by the network plugin. To use network policies, you must be using a networking solution
+which supports NetworkPolicy. Creating a NetworkPolicy resource without a controller that implements it will have no effect.
+使用NetworkPolice需要网络插件的支持：
+https://kubernetes.io/zh/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
+
+2. entities
+The entities that a Pod can communicate with are identified through a combination of the following 3 identifiers:
+
+1) Other pods that are allowed (exception: a pod cannot block access to itself)
+2) Namespaces that are allowed
+3) IP blocks (exception: traffic to and from the node where a Pod is running is always allowed, 
+regardless of the IP address of the Pod or the node)
+When defining a pod- or namespace- based NetworkPolicy, 
+you use a selector to specify what traffic is allowed to and from the Pod(s) that match the selector.
+Meanwhile, when IP based NetworkPolicies are created, we define policies based on IP blocks (CIDR ranges)
+
+3. Isolated and Non-isolated Pods
+By default, pods are non-isolated; they accept traffic from any source.
+默认情况下，集群中的POD都是可以相互通信的。
+
+Pods become isolated by having a NetworkPolicy that selects them. 
+Once there is any NetworkPolicy in a namespace selecting a particular pod, 
+that pod will reject any connections that are not allowed by any NetworkPolicy. 
+如果一个POD被一个NetworkPolicy选中，则需按照NetworkPolicy配置的流量规则。
+
+Network policies do not conflict; they are additive. If any policy or policies select a pod, 
+the pod is restricted to what is allowed by the union of those policies' ingress/egress rules. 
+Thus, order of evaluation does not affect the policy result.
+多个NetworkPolicy可以叠加
+
+For a network flow between two pods to be allowed, both the egress policy on the source pod and the ingress policy 
+on the destination pod need to allow the traffic. If either the egress policy on the source, 
+or the ingress policy on the destination denies the traffic, the traffic will be denied.
+
+4. example
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      role: db
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 172.17.0.0/16
+        except:
+        - 172.17.1.0/24
+    - namespaceSelector:
+        matchLabels:
+          project: myproject
+    - podSelector:
+        matchLabels:
+          role: frontend
+    ports:
+    - protocol: TCP
+      port: 6379
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/24
+    ports:
+    - protocol: TCP
+      port: 5978
+
+podSelector: Each NetworkPolicy includes a podSelector which selects the grouping of pods to which the policy applies. 
+The example policy selects pods with the label "role=db". 
+An empty podSelector selects all pods in the namespace.
+podSelector决定了哪些pod受NetworkPolicy的影响。
+
+policyTypes: Each NetworkPolicy includes a policyTypes list which may include either Ingress, Egress, or both. 
+The policyTypes field indicates whether or not the given policy applies to ingress traffic to selected pod, 
+egress traffic from selected pods, or both. 
+If no policyTypes are specified on a NetworkPolicy then by default Ingress will always be set 
+and Egress will be set if the NetworkPolicy has any egress rules.
+
+ingress决定进入pod的流量，egress决定出pod的流量。
+
+ingress: all pods in the "default" namespace with the label "role=db" on TCP port 6379 from:
+1） any pod in the "default" namespace with the label "role=frontend"
+2） any pod in a namespace with the label "project=myproject"
+3） IP addresses in the ranges 172.17.0.0–172.17.0.255 and 172.17.2.0–172.17.255.255 (ie, all of 172.17.0.0/16 except 172.17.1.0/24)
+
+egress: any pod in the "default" namespace with the label "role=db" to CIDR 10.0.0.0/24 on TCP port 5978
+
+
+参考资料：https://kubernetes.io/docs/concepts/services-networking/network-policies/

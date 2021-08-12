@@ -1,0 +1,43 @@
+给名为foo的Pod添加label unhealthy=true。
+kubectl label pods foo unhealthy=true
+
+给名为foo的Pod修改label 为 'status' / value 'unhealthy'，且覆盖现有的value。
+kubectl label --overwrite pods foo status=unhealthy
+
+给 namespace 中的所有 pod 添加 label
+kubectl label pods --all status=unhealthy
+
+仅当resource-version=1时才更新 名为foo的Pod上的label。
+kubectl label pods foo status=unhealthy --resource-version=1
+
+删除名为“bar”的label 。（使用“ - ”减号相连）
+kubectl label pods foo bar-
+
+
+example:
+
+[root@VM-0-2-centos exercise]# kubectl create deployment testlabel --image=nginx --port=80 --replicas=2
+deployment.apps/testlabel created
+[root@VM-0-2-centos exercise]# kubectl get pod
+NAME                         READY   STATUS    RESTARTS   AGE
+testlabel-6d9b946f9f-4s6xq   1/1     Running   0          3m21s
+testlabel-6d9b946f9f-b6xcg   1/1     Running   0          3m21s
+[root@VM-0-2-centos exercise]# kubectl label pod testlabel-6d9b946f9f-4s6xq status=health
+pod/testlabel-6d9b946f9f-4s6xq labeled
+[root@VM-0-2-centos exercise]# kubectl get pod testlabel-6d9b946f9f-4s6xq -oyaml
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: "2021-08-12T11:16:43Z"
+  generateName: testlabel-6d9b946f9f-
+  labels:
+    app: testlabel
+    pod-template-hash: 6d9b946f9f
+    status: health
+  name: testlabel-6d9b946f9f-4s6xq
+  namespace: default
+ .......
+ 可以看到，通过kubectl label为pod添加了一个status: health
+
+
+参考文档：http://docs.kubernetes.org.cn/628.html
