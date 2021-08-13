@@ -30,3 +30,4 @@ spec:
 # 为此，我定义了一个 Pod 模版（spec.template），这个模版描述了我想要创建的 Pod 的细节。
 # 在上面的例子里，这个 Pod 里只有一个容器，这个容器的镜像（spec.containers.image）是 nginx:1.7.9，
 # 这个容器监听端口（containerPort）是 80。
+# volumes参考https://kubernetes.io/docs/concepts/storage/volumes/
