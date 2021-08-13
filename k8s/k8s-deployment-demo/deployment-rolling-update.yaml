@@ -44,3 +44,5 @@ status: {}
 #kubectl edit可以实现滚动更新
 # kubectl edit deployments.apps web1
 # 这时候可以直接对yaml进行编辑， 如果修改了image版本，会自动发起滚动更新
+
+#扩展：Use the kubectl edit pod <pod-name> command to edit pod properties.
