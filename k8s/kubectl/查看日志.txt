@@ -4,7 +4,7 @@ $ kubectl logs “name of pod” > /opt/KDOB00201/log_output.txt
 # 有时候pod启动失败，还没有logs,则查看pod详情以寻找错误信息
 $ kubectl describe pod “name of pod”
 
-# -o wide可以显示pod的IP，pod所在namespace, node的名称，等更多信息，qa可以查找多个namespace
-$ kubectl get pod -o wide -n qa/test/production/alan
+# -o wide可以显示pod的IP，pod所在namespace, node的名称，等更多信息
+$ kubectl get pod -o wide -n "namespace"
 $ kubectl logs “name of pod” -n “namespace”
 # 最后根据错误信息修复 pod
