@@ -2,3 +2,4 @@
 $ Kubectl get pod -n production-app -o wide 
 $ kubectl top pod -n production-app --sort-by=cpu
 $ echo “Name of POD” > /opt/KDOB00301/pod.tx
+如果事按内存排序则是 --sort-by=memory
