@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+spec:
+   storageClassName: keys
+   capacity:
+     storage: 2Gi
+   accessModes:
+   - ReadWriteOnce
+   hostPath:
+     path: /opt/KDSP00101/data   
+
+#参考https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolume
