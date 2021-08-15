@@ -1,0 +1,27 @@
+1. 试创建一个configmap
+kubectl create configmap haproxy-config --from-file=/opt/KDMC00101/haproxy.cfg
+-n test --dry-run=client -oyaml > haproxy-config.yaml
+这样创建出的configmap data的key就是haproxy.cfg, value就是文件的内容。
+
+apiVersion: v1
+data:
+  haproxy.cfg: "global\n   log 127.0.0.1 local2\n   pidfile /var/run/haproxy.pid\n
+    \  maxconn 4000\n   user haproxy\n   group haproxy\n   daemon\n\ndefaults\n    mode
+    \  http\n    log   global\n    option   httplog\n    option dontlognull\n    option
+    http-server-close\n    option forwardfor except 127.0.0.0/8\n    option   redispatch\n
+    \   retries   3\n    timeout http-request 10s\n    timeout queue 1m\n    timeout
+    connect 10s\n    timeout client 1m\n    timeout server 1m\n    timeout http-keep-alive
+    10s\n    timeout check 10s\n    maxconn   30000\n\nlisten stats\n    mode http\n
+    \   bind 0.0.0.0:1080\n    stats enable\n    stats hide-version\n    stats uri
+    /haproxyadmin?stats\n    stats realm Haproxy\\ Statistics\n    stats auth admin:admin
+    \n"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: haproxy-config
+  namespace: test
+
+
+2.  创建一个service, 使用nodeport的方式，service的80端口：pod的80端口
+kubectl create service nodeport nginxsvc --tcp=80:80 -n test
+这时候可以用kubectl edit service nginxsvc -n test进行编辑，编辑后会自动更新。
