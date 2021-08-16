@@ -1,0 +1,22 @@
+apiVersion: v1 
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+data:
+  fluentd.conf: |
+    <source>
+      type tail
+      path /tmp/log/input.log 
+      pos_file /tmp/log/input.log.pos 
+      tag count.format1
+    </source>
+    <match **>
+      type file
+      format json
+      path /tmp/log/output.*
+      @type detect_exceptions
+    </match>
+
+#fluentd配置文件怎么写可以不用理解，一般考试时会给出
+#这样写configMap，和--from-file得到的configMap一样，fluentd.conf可以用做文件挂载到pod的volumes里
+

@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: deployent-web
+  name: deployent-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deployent-web
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: deployent-web
+    spec:
+      containers:
+      - image: busybox
+        name: logger-123
+        resources: {}
+        volumeMounts:
+        - mountPath: "/tmp/log"
+          name: tmp
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do echo i luv cncf >> /tmp/log/input.log; sleep 10;done"]
+      - image: fluent/fluentd
+        name: adaptor-dev
+        env:
+          - name:  FLUENTD_CONF
+            value: "fluentd.conf"
+        volumeMounts:
+        - name: tmp
+          mountPath: "/tmp/log"
+        - name: config-vol
+          mountPath: "/fluentd/etc"
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: config-vol
+        configMap:
+          name: fluentd-config
+
+
+# env:
+# - name:  FLUENTD_CONF
+#   value: "fluentd.conf"
+#必须配置，而且name为大写，value为configMap中的key值，否则会报错找不到配置文件
