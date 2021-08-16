@@ -25,3 +25,6 @@ metadata:
 2.  创建一个service, 使用nodeport的方式，service的80端口：pod的80端口
 kubectl create service nodeport nginxsvc --tcp=80:80 -n test
 这时候可以用kubectl edit service nginxsvc -n test进行编辑，编辑后会自动更新。
+
+3. 试创建一个名叫api的deployment，image为nginx:1.13.7，容器开放端口为80，3个pod
+kubectl create deployment api -n kdpd00201 --image=nginx:1.13.7 --port=80 --replicas=3 --dry-run=client -oyaml > create-deployment-exercise2.yaml

@@ -22,3 +22,5 @@ spec:
 
 #启动后，/tmp/healthy被删除，健康检查通过不了。 k8s就会自动重启，这就是k8s的自动恢复机制，可以通过kubectl get pods查看到重启的过程。
 #自动恢复机制也叫restartPolicy。它是Pod的Spec部分的一个标准字段（pod.spec.restartPolicy），默认值是Always
+
+#参考资料：https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
