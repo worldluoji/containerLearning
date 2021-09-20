@@ -9,3 +9,5 @@ $ kubectl get pod -o wide -n "namespace"
 $ kubectl logs “name of pod” -n “namespace”
 # 最后根据错误信息修复 pod
 #如果一个pod中有多个container,  kubectl logs “name of pod” “container name” -n “namespace”
+
+一般可以用kubectl -n "namespace" get all查看哪个deployment、Service出了问题。

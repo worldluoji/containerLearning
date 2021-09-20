@@ -26,3 +26,19 @@ kubectl run nginx --image=nginx --overrides='{ "apiVersion": "v1", "spec": { ...
 kubectl run -i --tty busybox --image=busybox --restart=Never
 
 参考：http://kubernetes.kansea.com/docs/user-guide/kubectl/kubectl_run/
+
+实战：
+kubectl run tmp --restart=Never --rm -i --image=nginx:alpine -- curl -m 5 10.12.2.15
+(curl -m, --max-time SECONDS设置最大传输时间)
+
+kubectl run tmp --restart=Never --rm --image=busybox -i -- wget -O- 10.12.2.15
+
+以上两种方法都可以看10.12.2.15服务器的80端口是否通，前一个使用镜像nginx:alpine, 使用了curl；
+后一个使用镜像busybox, 使用的是wget.
+ -i, --stdin=false: Keep stdin open on the container(s) in the pod, even if
+nothing is attached
+
+t, --tty=false: Allocated a TTY for each container in the pod.
+      --wait=false: If true, wait for resources to be gone before returning.
+
+--rm=false: If true, delete resources created in this command for attached containers.

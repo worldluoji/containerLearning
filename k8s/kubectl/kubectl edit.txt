@@ -1,0 +1,6 @@
+
+kubectl edit service nginxsvc -n test 编辑nginxsvc这隔Service
+
+kubectl -n earth edit deploy earth-3cc-web 编辑earth-3cc-web这个deployment
+
+编辑都后会自动更新
