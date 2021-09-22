@@ -28,3 +28,17 @@ kubectl create service nodeport nginxsvc --tcp=80:80 -n test
 
 3. 试创建一个名叫api的deployment，image为nginx:1.13.7，容器开放端口为80，3个pod
 kubectl create deployment api -n kdpd00201 --image=nginx:1.13.7 --port=80 --replicas=3 --dry-run=client -oyaml > create-deployment-exercise2.yaml
+
+4. 创建一个serviceaccount
+kubectl create -n production-app serviceaccount app
+然后可以在POD声明serviceAccountName：
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: mynamespace
+  name: sa-token-test
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.7.9
+  serviceAccountName: example-sa
