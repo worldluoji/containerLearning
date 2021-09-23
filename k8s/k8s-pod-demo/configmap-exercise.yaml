@@ -28,3 +28,7 @@ spec:
       - key: key1
         path: path
       
+# A ConfigMap is not designed to hold large chunks of data. 
+# The data stored in a ConfigMap cannot exceed 1 MiB. 
+# If you need to store settings that are larger than this limit,
+# you may want to consider mounting a volume or use a separate database or file servic
