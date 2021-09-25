@@ -14,6 +14,18 @@ kubectl label pods foo status=unhealthy --resource-version=1
 kubectl label pods foo bar-
 
 
+查找label中有type: runner的pod
+kubectl get pod -l type=runner
+
+给所有带有type: runner标签的pod打上protected: true标签
+kubectl label pod -l type=runner protected=true
+
+#查看pod并显示标签
+kubectl get pod --show-labels
+
+kubectl label命令换为kubectl annotate就是打注释
+
+
 example:
 
 [root@VM-0-2-centos exercise]# kubectl create deployment testlabel --image=nginx --port=80 --replicas=2
