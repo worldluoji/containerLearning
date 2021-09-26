@@ -42,3 +42,8 @@ t, --tty=false: Allocated a TTY for each container in the pod.
       --wait=false: If true, wait for resources to be gone before returning.
 
 --rm=false: If true, delete resources created in this command for attached containers.
+
+
+kubectl run test --restart=Never -i --rm --image=nginx:alpine -- curl -m 5  manager-api-svc.mars:4444
+
+测试网络连通性可以用manager-api-svc.mars， 即serviceName.namespace的形式
