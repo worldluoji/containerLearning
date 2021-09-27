@@ -42,3 +42,10 @@ spec:
   - name: nginx
     image: nginx:1.7.9
   serviceAccountName: example-sa
+
+
+5. Create a job
+kubectl create job my-job --image=busybox
+
+以上命令都可以kubectl create -h 获取帮助信息
+比如kubectl create job -h
