@@ -1,0 +1,2 @@
+进入一个pod内部
+kubectl exec -it sa-token-test -n mynamespace -- /bin/bash

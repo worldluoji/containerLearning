@@ -4,3 +4,6 @@ kubectl edit service nginxsvc -n test 编辑nginxsvc这隔Service
 kubectl -n earth edit deploy earth-3cc-web 编辑earth-3cc-web这个deployment
 
 编辑都后会自动更新
+
+需要注意的是，pod可以edit，但不能被修改关键信息。因此，修改pod更好的方式是修改其对应的deployment，
+如果没有用deployment, 则修改pod对应的yaml，再apply -f xxx.yaml更新
