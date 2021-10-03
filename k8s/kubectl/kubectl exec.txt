@@ -1,2 +1,20 @@
-进入一个pod内部
+1. 进入一个pod内部
 kubectl exec -it sa-token-test -n mynamespace -- /bin/bash
+
+2. 测试一个pod和其它地址的连通性
+k8s@terminal:/opt/course/20$ kubectl get pod  -n venus
+NAME                        READY   STATUS    RESTARTS   AGE
+api-5548866cb5-p4fjn        1/1     Running   0          16d
+api-5548866cb5-vbrmv        1/1     Running   0          16d
+frontend-5d5658f9d4-7ll22   1/1     Running   0          16d
+frontend-5d5658f9d4-7njxp   1/1     Running   0          16d
+frontend-5d5658f9d4-bqp95   1/1     Running   0          16d
+frontend-5d5658f9d4-nz2fc   1/1     Running   0          16d
+frontend-5d5658f9d4-pxv5p   1/1     Running   0          16d
+
+k8s@terminal:/opt/course/20$ kubectl exec frontend-5d5658f9d4-7ll22 -n venus -- wget  www.google.com
+Connecting to www.google.com (172.217.194.105:80)
+^C
+k8s@terminal:/opt/course/20$ kubectl exec frontend-5d5658f9d4-7ll22 -n venus -- wget  api:2222
+Connecting to api:2222 (10.108.170.152:2222)
+index.html           100% |********************************|    45  0:00:00 ETA
