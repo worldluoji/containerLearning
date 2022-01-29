@@ -1,29 +1,33 @@
-1.��ν���������
-  ��4�ַ�ʽ�ܽ����������ֱ�Ϊ  exec��docker attach��ssh��nsenter.
-  ��4�ֶ��ܽ��������������������õ���exec,�������ǽ������exec������ѧ��
+1.如何进入容器？
+  有4种方式能进入容器，分别为  exec、docker attach、ssh、nsenter.
+  这4种都能进入容器，但是最好用最常用的是exec,所以我们今天就用exec来做教学。
   
 2.docker exec --help
-	-d �Ժ�̨��ʽִ�У�����������ִ����������������Ը��������飬д�ű����
-	-e ������������
-	-i �Խ�����ʽ���У�������ʽ��
-	-t ����һ��α�նˣ��������ͨ����-i����һ��ʹ�ã�Ȼ���ں�������������/bin/bash�������Ͱ����Ǵ���������ȥ�ˡ�
-	-u ָ��������������ĸ��û���½��Ĭ����root
+	-d 以后台方式执行，这样，我们执行完这条命令，还可以干其他事情，写脚本最常用
+	-e 代表环境变量
+	-i 以交互方式运行，是阻塞式的
+	-t 分配一个伪终端，这个参数通常与-i参数一起使用，然后在后面跟上容器里的/bin/bash，这样就把我们带到容器里去了。
+	-u 指定进入的容器以哪个用户登陆，默认是root
 	
-3.���� ��������
+3.进入 容器命令
   docker exec -it eureka sh
   docker exec -it eureka /bin/bash
   docker exec -it eureka pwd
   docker exec -it eureka top
 
 
-4. �������������û��ifconfig��ping������԰����·�����װ
+4. 进入容器后，如果没有ifconfig，ping命令，可以按如下方法安装
 apt-get update
 apt install net-tools       # ifconfig 
 apt install iputils-ping     # ping
 
 
-Ϊʲô����ʹ��exec?
-attach: ʹ�ø�������һ�����⡣���������ͬʱʹ�ø�������������ʱ�����еĴ��ڶ���ͬ����ʾ�������һ�����������ˣ���ô��������Ҳ�޷��ٽ��в�����
-nsenter: �����࣬ʹ�ýϸ���
-ssh: ��������Ҫ����һ��SSH���񣬴����ʱ��û�б�Ҫ
-https://cloud.tencent.com/developer/article/1334959
+docker exec：Run a command in a running container
+翻译过来就是在一个正在运行的容器中执行命令，exec是针对已运行的容器实例进行操作，
+在已运行的容器中执行命令，不创建和启动新的容器，退出shell不会导致容器停止运行。
+
+为什么建议使用exec?
+1. docker attach：多终端访问时，一个阻塞，则所有都阻塞
+2. ssh: 需要容器内部安装ssh服务，但大多数场景没有必要
+3. nsenter: 使用参数角度，复杂
+
