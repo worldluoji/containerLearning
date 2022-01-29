@@ -20,3 +20,10 @@
 apt-get update
 apt install net-tools       # ifconfig 
 apt install iputils-ping     # ping
+
+
+为什么建议使用exec?
+attach: 使用该命令有一个问题。当多个窗口同时使用该命令进入该容器时，所有的窗口都会同步显示。如果有一个窗口阻塞了，那么其他窗口也无法再进行操作。
+nsenter: 参数多，使用较复杂
+ssh: 容器里需要运行一个SSH服务，大多数时候都没有必要
+https://cloud.tencent.com/developer/article/1334959

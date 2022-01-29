@@ -75,8 +75,9 @@
 
  查看日志：
 docker logs -f -t --tail 20 容器ID
-  
-  
+
+查看容器详情：
+docker inspect <containerid>
   
   
   
