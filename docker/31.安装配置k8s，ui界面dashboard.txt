@@ -1,7 +1,0 @@
-1.在离线k8s的安装目录下，执行 
-kubectl apply -f kubernetes-dashboard-http.yaml
-kubectl apply -f admin-role.yaml
-kubectl apply -f kubernetes-dashboard-admin.rbac.yaml
-
-创建完成后，通过 http://任意节点的IP:31000即可访问ui
-
