@@ -29,5 +29,5 @@ docker exec：Run a command in a running container
 为什么建议使用exec?
 1. docker attach：多终端访问时，一个阻塞，则所有都阻塞
 2. ssh: 需要容器内部安装ssh服务，但大多数场景没有必要
-3. nsenter: 使用参数角度，复杂
+3. nsenter: 使用参数多，复杂
 
