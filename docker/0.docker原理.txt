@@ -31,7 +31,8 @@ memory on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 $ ls /sys/fs/cgroup/cpu
 cgroup.clone_children cpu.cfs_period_us cpu.rt_period_us  cpu.shares notify_on_release
 cgroup.procs      cpu.cfs_quota_us  cpu.rt_runtime_us cpu.stat  tasks
-如果熟悉 Linux CPU 管理的话，你就会在它的输出里注意到 cfs_period 和 cfs_quota 这样的关键词。这两个参数需要组合使用，可以用来限制进程在长度为 cfs_period 的一段时间内，只能被分配到总量为 cfs_quota 的 CPU 时间。
+如果熟悉 Linux CPU 管理的话，你就会在它的输出里注意到 cfs_period 和 cfs_quota 这样的关键词。
+这两个参数需要组合使用，可以用来限制进程在长度为 cfs_period 的一段时间内，只能被分配到总量为 cfs_quota 的 CPU 时间。
 
 如何使用Cgroup?
 我们现在进入 /sys/fs/cgroup/cpu 目录下：
@@ -176,7 +177,11 @@ stat文件中有两个数值utime 和 stime 是什么含义呢？utime 是表示
 第二个参数 et 是我们刚才说的那个“瞬时”的时间，也就是得到 utime_1 和 utime_2 这两个值的时间间隔（即1s两个值的间隔）。
 
 8. 容器在系统中被杀掉
-容器在系统中被杀掉，其实只有一种情况，那就是容器中的进程使用了太多的内存。具体来说，就是容器里所有进程使用的内存量，超过了容器所在 Memory Cgroup 里的内存限制。这时 Linux 系统就会主动杀死容器中的一个进程，往往这会导致整个容器的退出。这时候，如果我们运行docker inspect 命令查看容器退出的原因，就会看到容器处于"exited"状态，并且"OOMKilled"是 true。
+容器在系统中被杀掉，其实只有一种情况，那就是容器中的进程使用了太多的内存。
+具体来说，就是容器里进程使用的内存量，超过了容器所在Memory Cgroup里的内存限制。
+这时Linux系统就会主动杀死容器中的一个进程，往往这会导致整个容器的退出。
+这时候，我们运行docker inspect命令查看容器退出的原因，就会看到容器处于"exited"状态，并且"OOMKilled"是 true。
+
 如何确定是否发生了OOM Killer?
 journalctl -k 命令，或者直接查看日志文件 /var/log/message，我们会发现当容器发生 OOM Kill 的时候，内核会输出下面的:
 Memory Cgroup out of memory......
@@ -191,16 +196,17 @@ memory.usage_in_bytes : 这个参数是只读的，它里面的数值是当前�
 那么知道了哪个进程消耗了最大内存之后，我们就可以有针对性地对这个进程进行分析了，一般有这两种情况：
 第一种情况是这个进程本身的确需要很大的内存，这说明我们给 memory.limit_in_bytes 里的内存上限值设置小了，那么就需要增大内存的上限值。
 第二种情况是进程的代码中有 Bug，会导致内存泄漏，进程内存使用到达了 Memory Cgroup 中的上限。如果是这种情况，就需要我们具体去解决代码里的问题了。
-注意点：Memory Cgroup 只是统计了 RSS 和 Page Cache 这两部分的内存。
+注意点：Memory Cgroup只是统计了 RSS 和 Page Cache 这两部分的内存。
 
-需要你留意：当 设置memory.swappiness = 0 的时候，对匿名页的回收是始终禁止的，也就是容器始终都不会使用 Swap 空间。
+需要你留意：当设置memory.swappiness = 0的时候，对匿名页的回收是始终禁止的，也就是容器始终都不会使用 Swap 空间。
 
 
 10. Blkio Cgroup
 先理解两个指标：
 1）IOPS 是 Input/Output Operations Per Second 的简称，也就是每秒钟磁盘读写的次数，这个数值越大，当然也就表示性能越好。
-2）吞吐量（Throughput）是指每秒钟磁盘中数据的读取量，一般以 MB/s 为单位。这个读取量可以叫作吞吐量，有时候也被称为带宽（Bandwidth）。刚才我们用到的 fio 显示结果就体现了带宽。
-吞吐量 = 数据块大小 *IOPS。
+2）吞吐量（Throughput）是指每秒钟磁盘中数据的读取量，一般以 MB/s 为单位。
+这个读取量可以叫作吞吐量，有时候也被称为带宽（Bandwidth）。
+吞吐量 = 数据块大小 * IOPS。
 
 在 blkio Cgroup 中，有四个最主要的参数，它们可以用来限制磁盘 I/O 性能：
 blkio.throttle.read_iops_device        读磁盘IOPS限制
@@ -213,5 +219,7 @@ blkio.throttle.write_bps_device
 Cgroup v2 相比 Cgroup v1 做的最大的变动就是一个进程属于一个控制组，而每个控制组里可以定义自己需要的多个子系统。
 Cgroup V2 里的 io 子系统就等同于 Cgroup v1 里的 blkio 子系统。
 那么，Cgroup 对进程 pid_y 的磁盘 I/O 做限制的时候，就可以考虑到进程 pid_y 写入到 Page Cache 内存的页面了，这样 buffered I/O 的磁盘限速就实现了。
-但目前即使最新版本的 Ubuntu Linux 或者 Centos Linux，仍然在使用 Cgroup v1 作为缺省的 Cgroup。打开方法就是配置一个 kernel 参数"cgroup_no_v1=blkio,memory"，这表示把 Cgroup v1 的 blkio 和 Memory 两个子系统给禁止，这样 Cgroup v2 的 io 和 Memory 这两个子系统就打开了。
-虽然 Cgroup v2 解决了 Buffered I/O 磁盘读写限速的问题，但是在现实的容器平台上也不是能够立刻使用的，还需要等待一段时间。目前从 runC、containerd 到 Kubernetes 都是刚刚开始支持 Cgroup v2，而对生产环境中原有运行 Cgroup v1 的节点要迁移转化成 Cgroup v2 需要一个过程。
+但目前即使最新版本的 Ubuntu Linux 或者 Centos Linux，仍然在使用 Cgroup v1 作为缺省的 Cgroup。
+打开方法就是配置一个 kernel 参数"cgroup_no_v1=blkio,memory"，这表示把 Cgroup v1 的 blkio 和 Memory 两个子系统给禁止，这样 Cgroup v2 的 io 和 Memory 这两个子系统就打开了。
+虽然 Cgroup v2 解决了 Buffered I/O 磁盘读写限速的问题，但是在现实的容器平台上也不是能够立刻使用的，还需要等待一段时间。
+目前从 runC、containerd 到 Kubernetes 都是刚刚开始支持 Cgroup v2，而对生产环境中原有运行 Cgroup v1 的节点要迁移转化成 Cgroup v2 需要一个过程。
