@@ -8,7 +8,9 @@
 2.kubelet，其实是 Kubernetes 整套体系里非常核心的一个部分。 
 毕竟它才是 Kubernetes 这样一个容器编排与管理系统，跟容器打交道的主要“场所”。
 
-3.kubelet 的工作核心，就是一个控制循环，即：SyncLoop（图中的大圆圈）。而驱动这个控制循环运行的事件，包括四种：
+3. kubelet 的工作核心
+就是一个控制循环，即：SyncLoop（kubelete principal.png图中的大圆圈）。
+而驱动这个控制循环运行的事件，包括四种：
 1）Pod 更新事件；
 2）Pod 生命周期变化；
 3）本身设置的执行周期；
@@ -25,7 +27,11 @@
 再比如 CPU Manager，就负责维护该 Node 的 CPU 核的信息，以便在 Pod 通过 cpuset 的方式请求 CPU 核的时候，
 能够正确地管理 CPU 核的使用量和可用量。
 
-4. 当一个 Pod 完成调度、与一个 Node 绑定起来之后， 这个 Pod 的变化就会触发 kubelet 在控制循环里注册的 Handler，
+4.  SyncLoop，如何根据 Pod 对象的变化，来进行容器操作的呢？
+kubelet也是通过 Watch 机制，监听了与自己相关的 Pod 对象的变化。
+这个 Watch 的过滤条件是该 Pod 的 nodeName 字段与自己相同。kubelet 会把这些 Pod 的信息缓存在自己的内存里。
+
+当一个 Pod 完成调度、与一个 Node 绑定起来之后， 这个 Pod 的变化就会触发 kubelet 在控制循环里注册的 Handler，
 也就是图中的 HandlePods 部分。此时，通过检查该 Pod 在 kubelet 内存里的状态，kubelet 就能够判断出这是一个新调度过来的 Pod，
 从而触发 Handler 里 ADD 。
 
@@ -34,11 +40,13 @@
 然后，调用下层的容器运行时（比如 Docker），开始创建这个 Pod 所定义的容器。
 而如果是 UPDATE 事件的话，kubelet 就会根据 Pod 对象具体的变更情况，调用下层容器运行时进行容器的重建工作。
 
+凡是在 kubelet 里有可能会耗费大量时间的操作，比如准备 Pod 的 Volume、拉取镜像等，
+SyncLoop 都会开启单独的 Goroutine 来进行操作。
 
-5.kubelet 调用下层容器运行时的执行过程，并不会直接调用 Docker 的 API，
+5. kubelet 调用下层容器运行时的执行过程，并不会直接调用 Docker 的 API
 而是通过一组叫作 CRI（Container Runtime Interface，容器运行时接口）的 gRPC 接口来间接执行的。
 Kubernetes 项目之所以要在 kubelet 中引入这样一层单独的抽象，当然是为了对 Kubernetes 屏蔽下层容器运行时的差异。
-实际上，对于 1.6 版本之前的 Kubernetes 来说，它就是直接调用 Docker 的 API 来创建和管理容器的。
+还有podman、containered等容器，当前是Google更推荐的。
 
 Kubernetes 通过编排能力创建了一个 Pod 之后，调度器会为这个 Pod 选择一个具体的节点来运行。
 这时候，kubelet 当然就会通过前面讲解过的 SyncLoop 来判断需要执行的具体操作，比如创建一个 Pod。
