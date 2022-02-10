@@ -7,7 +7,6 @@ spec:
   containers:
   - name: app
     image: images.my-company.example/app:v4
-    env:
     resources:
       requests:
         memory: "64Mi"
@@ -29,6 +28,11 @@ cpu=1 指的就是，这个 Pod 的 CPU 限额是 1 个 CPU。当然，具体“
 对于内存资源来说，它的单位是 bytes。Kubernetes 支持你使用 Ei、Pi、Ti、Gi、Mi、Ki（或者 E、P、T、G、M、K）的方式来作为 bytes 的值。
 比如，在我们的例子里，Memory requests 的值就是 64MiB (2 的 26 次方 bytes = 64MiB) 。
 这里要注意区分 MiB（mebibyte）和 MB（megabyte）的区别。备注：1Mi=1024*1024；1M=1000*1000
+
+在 Kubernetes 中，像 CPU 这样的资源被称作“可压缩资源”（compressible resources）。
+它的典型特点是，当可压缩资源不足时，Pod 只会“饥饿”，但不会退出。
+而像内存这样的资源，则被称作“不可压缩资源（incompressible resources）”。
+当不可压缩资源不足时，Pod 就会因为 OOM（Out-Of-Memory）被内核杀掉。
 
 2. Qos类别划分
 1） Guaranteed 类别：当 Pod 里的每一个 Container 都同时设置了 requests 和 limits，
