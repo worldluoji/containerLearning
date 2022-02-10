@@ -1,9 +1,10 @@
-1. Predicates 在调度过程中的作用，可以理解为 Filter，即：它按照调度策略，从当前集群的所有节点中，“过滤”出一系列符合条件的节点。这些节点，都是可以运行待调度 Pod 的宿主机。
-
-2.默认的调度策略有如下4种。
+1. 默认的调度策略有如下4种
 1) 第一种类型，叫作 GeneralPredicates.
-这一组过滤规则，负责的是最基础的调度策略。比如，PodFitsResources 计算的就是宿主机的 CPU 和内存资源等是否够用。当然，我在前面已经提到过，PodFitsResources 检查的只是 Pod 的 requests 字段。
-需要注意的是，Kubernetes 的调度器并没有为 GPU 等硬件资源定义具体的资源类型，而是统一用一种名叫 Extended Resource 的、Key-Value 格式的扩展字段来描述的，比如:
+这一组过滤规则，负责的是最基础的调度策略。
+比如，PodFitsResources 计算的就是宿主机的 CPU 和内存资源等是否够用。
+（PodFitsResources 检查的只是 Pod 的 requests 字段）
+需要注意的是，Kubernetes 的调度器并没有为 GPU 等硬件资源定义具体的资源类型，
+而是统一用一种名叫 Extended Resource 的、Key-Value 格式的扩展字段来描述的，比如:
 apiVersion: v1
 kind: Pod
 metadata:
@@ -20,15 +21,23 @@ spec:
 
 这个 Pod 通过alpha.kubernetes.io/nvidia-gpu=2这样的定义方式，声明使用了两个 NVIDIA 类型的 GPU.
 
-而在 PodFitsResources 里面，调度器其实并不知道这个字段 Key 的含义是 GPU，而是直接使用后面的 Value 进行计算。当然，在 Node 的 Capacity 字段里，你也得相应地加上这台宿主机上 GPU 的总数，比如：alpha.kubernetes.io/nvidia-gpu=4。这些流程，我在后面讲解 Device Plugin 的时候会详细介绍。
+而在 PodFitsResources 里面，调度器其实并不知道这个字段 Key 的含义是 GPU，而是直接使用后面的 Value 进行计算。
+当然，在 Node 的 Capacity 字段里，你也得相应地加上这台宿主机上 GPU 的总数，
+比如：alpha.kubernetes.io/nvidia-gpu=4。这些流程，后面讲解 Device Plugin 的时候会详细介绍。
 PodFitsHost 检查的是，宿主机的名字是否跟 Pod 的 spec.nodeName 一致。
 PodFitsHostPorts 检查的是，Pod 申请的宿主机端口（spec.nodePort）是不是跟已经被使用的端口有冲突。
 PodMatchNodeSelector 检查的是，Pod 的 nodeSelector 或者 nodeAffinity 指定的节点，是否与待考察节点匹配，等等。
 
 2) 第二种类型，是与 Volume 相关的过滤规则。
-比如，NoDiskConflict 检查的条件，是多个 Pod 声明挂载的持久化 Volume 是否有冲突。比如，AWS EBS 类型的 Volume，是不允许被两个 Pod 同时使用的； VolumeBinding Predicate 的规则，它负责检查的，是该 Pod 对应的 PV 的 nodeAffinity 字段，是否跟某个节点的标签相匹配。
-之前说过local Persistent Volume（本地持久化卷），必须使用 nodeAffinity 来跟某个具体的节点绑定。这其实也就意味着，在 Predicates 阶段，Kubernetes 就必须能够根据 Pod 的 Volume 属性来进行调度。
-如果该 Pod 的 PVC 还没有跟具体的 PV 绑定的话，调度器还要负责检查所有待绑定 PV，当有可用的 PV 存在并且该 PV 的 nodeAffinity 与待考察节点一致时，这条规则才会返回“成功”。
+比如，NoDiskConflict 检查的条件，是多个 Pod 声明挂载的持久化 Volume 是否有冲突。
+比如，AWS EBS 类型的 Volume，是不允许被两个 Pod 同时使用的； 
+VolumeBinding Predicate 的规则，它负责检查的，是该 Pod 对应的 PV 的 nodeAffinity 字段，是否跟某个节点的标签相匹配。
+
+之前说过local Persistent Volume（本地持久化卷），必须使用 nodeAffinity 来跟某个具体的节点绑定。
+这其实也就意味着，在 Predicates 阶段，Kubernetes 就必须能够根据 Pod 的 Volume 属性来进行调度。
+如果该 Pod 的 PVC 还没有跟具体的 PV 绑定的话，调度器还要负责检查所有待绑定 PV，
+当有可用的 PV 存在并且该 PV 的 nodeAffinity 与待考察节点一致时，这条规则才会返回“成功”。
+
 实例：
 apiVersion: v1
 kind: PersistentVolume
@@ -52,15 +61,19 @@ spec:
           values:
           - my-node
 
-这个 PV 对应的持久化目录，只会出现在名叫 my-node 的宿主机上。所以，任何一个通过 PVC 使用这个 PV 的 Pod，都必须被调度到 my-node 上才可以正常工作。
+这个 PV 对应的持久化目录，只会出现在名叫 my-node 的宿主机上。
+所以，任何一个通过 PVC 使用这个 PV 的 Pod，都必须被调度到 my-node 上才可以正常工作。
 
 3）第三种类型，是宿主机相关的过滤规则。
-比如，PodToleratesNodeTaints，负责检查的就是我们前面经常用到的 Node 的“污点”机制。只有当 Pod 的 Toleration 字段与 Node 的 Taint 字段能够匹配的时候，这个 Pod 才能被调度到该节点上。
-而 NodeMemoryPressurePredicate，检查的是当前节点的内存是不是已经不够充足，如果是的话，那么待调度 Pod 就不能被调度到该节点上。
+比如，PodToleratesNodeTaints，负责检查的就是我们前面经常用到的 Node 的“污点”机制。
+只有当 Pod 的 Toleration 字段与 Node 的 Taint 字段能够匹配的时候，这个 Pod 才能被调度到该节点上。
+NodeMemoryPressurePredicate，检查的是当前节点的内存是不是已经不够充足，如果是，那么待调度 Pod 就不能被调度到该节点上。
 
 4）第四种类型，是 Pod 相关的过滤规则。
-这一组规则，跟 GeneralPredicates 大多数是重合的。而比较特殊的，是 PodAffinityPredicate。这个规则的作用，是检查待调度 Pod 与 Node 上的已有 Pod 之间的亲密（affinity）和反亲密（anti-affinity）关系。
+这一组规则，跟 GeneralPredicates 大多数是重合的。而比较特殊的，是 PodAffinityPredicate。
+这个规则的作用，是检查待调度 Pod 与 Node 上的已有 Pod 之间的亲密（affinity）和反亲密（anti-affinity）关系。
 比如下面例子表示，POD应调度在不带标签S2的Node上。
+
 apiVersion: v1
 kind: Pod
 metadata:
@@ -84,16 +97,28 @@ spec:
 
 与 podAntiAffinity 相反的，就是 podAffinity。
 
-上面这例子里的 requiredDuringSchedulingIgnoredDuringExecution 字段的含义是：这条规则必须在 Pod 调度时进行检查（requiredDuringScheduling）；但是如果是已经在运行的 Pod 发生变化，比如 Label 被修改，造成了该 Pod 不再适合运行在这个 Node 上的时候，Kubernetes 不会进行主动修正（IgnoredDuringExecution）。
+上面这例子里的 requiredDuringSchedulingIgnoredDuringExecution 字段的含义是：
+这条规则必须在 Pod 调度时进行检查（requiredDuringScheduling）；
+但是如果是已经在运行的 Pod 发生变化，比如 Label 被修改，造成了该 Pod 不再适合运行在这个 Node 上的时候，
+Kubernetes 不会进行主动修正（IgnoredDuringExecution）。
 
-3.在具体执行的时候， 当开始调度一个 Pod 时，Kubernetes 调度器会同时启动 16 个 Goroutine，来并发地为集群里的所有 Node 计算 Predicates，最后返回可以运行这个 Pod 的宿主机列表。
+2.在具体执行的时候， 当开始调度一个 Pod 时，Kubernetes 调度器会同时启动 16 个 Goroutine，
+来并发地为集群里的所有 Node 计算 Predicates，最后返回可以运行这个 Pod 的宿主机列表。
 
 
-4. 在 Predicates 阶段完成了节点的“过滤”之后，Priorities 阶段的工作就是为这些节点打分。这里打分的范围是 0-10 分，得分最高的节点就是最后被 Pod 绑定的最佳节点。
+3.在 Predicates 阶段完成了节点的“过滤”之后，Priorities 阶段的工作就是为这些节点打分。
+这里打分的范围是 0-10 分，得分最高的节点就是最后被 Pod 绑定的最佳节点。
 Priorities 里最常用到的一个打分规则，是 LeastRequestedPriority，这个算法实际上就是在选择空闲资源（CPU 和 Memory）最多的宿主机。
-而与 LeastRequestedPriority一起发挥作用的，还有BalancedResourceAllocation，该算法选择的其实是调度完成后，所有节点里各种资源分配最均衡的那个节点，从而避免一个节点上 CPU 被大量分配、而 Memory 大量剩余的情况。
-此外，还有 NodeAffinityPriority、TaintTolerationPriority 和 InterPodAffinityPriority 这三种 Priority。顾名思义，它们与前面的 PodMatchNodeSelector、PodToleratesNodeTaints 和 PodAffinityPredicate 这三个 Predicate 的含义和计算方法是类似的。但是作为 Priority，一个 Node 满足上述规则的字段数目越多，它的得分就会越高。
-在默认 Priorities 里，还有一个叫作 ImageLocalityPriority 的策略。它是在 Kubernetes v1.12 里新开启的调度规则，即：如果待调度 Pod 需要使用的镜像很大，并且已经存在于某些 Node 上，那么这些 Node 的得分就会比较高。
+
+与 LeastRequestedPriority一起发挥作用的，还有BalancedResourceAllocation，该算法选择的其实是调度完成后，
+所有节点里各种资源分配最均衡的那个节点，从而避免一个节点上 CPU 被大量分配、而 Memory 大量剩余的情况。
+
+此外，还有 NodeAffinityPriority、TaintTolerationPriority 和 InterPodAffinityPriority 这三种 Priority。
+顾名思义，它们与前面的 PodMatchNodeSelector、PodToleratesNodeTaints 和 PodAffinityPredicate 这三个 Predicate 的含义和计算方法是类似的。
+但是作为 Priority，一个 Node 满足上述规则的字段数目越多，它的得分就会越高。
+在默认 Priorities 里，还有一个叫作 ImageLocalityPriority 的策略。
+它是在 Kubernetes v1.12 里新开启的调度规则，即：如果待调度 Pod 需要使用的镜像很大，
+并且已经存在于某些 Node 上，那么这些 Node 的得分就会比较高。
 
 
-5. 实际的执行过程中，调度器里关于集群和 Pod 的信息都已经缓存化，所以这些算法的执行过程还是比较快的。
+4.实际的执行过程中，调度器里关于集群和 Pod 的信息都已经缓存化，所以这些算法的执行过程还是比较快的。
