@@ -26,7 +26,14 @@ By default, pods are non-isolated; they accept traffic from any source.
 Pods become isolated by having a NetworkPolicy that selects them. 
 Once there is any NetworkPolicy in a namespace selecting a particular pod, 
 that pod will reject any connections that are not allowed by any NetworkPolicy. 
-如果一个POD被一个NetworkPolicy选中，则需按照NetworkPolicy配置的流量规则。
+而如果你把 podSelector 字段留空
+spec:
+ podSelector: {}
+那么这个 NetworkPolicy 就会作用于当前 Namespace 下的所有 Pod。
+这时，一旦 Pod 被 NetworkPolicy 选中，那么这个 Pod 就会进入“拒绝所有”（Deny All）的状态，即：
+这个 Pod 既不允许被外界访问，也不允许对外界发起访问。
+
+NetworkPolicy 定义的规则，其实就是“白名单”。
 
 Network policies do not conflict; they are additive. If any policy or policies select a pod, 
 the pod is restricted to what is allowed by the union of those policies' ingress/egress rules. 
@@ -86,6 +93,12 @@ and Egress will be set if the NetworkPolicy has any egress rules.
 
 ingress决定进入pod的流量，egress决定出pod的流量。
 
+在 ingress 字段里，定义了 from 和 ports，即：允许流入的“白名单”和端口。
+其中，这个允许流入的“白名单”里，指定了三种并列的情况，
+分别是：ipBlock、namespaceSelector 和 podSelector。
+
+egress与ingress配置类似。
+
 ingress: all pods in the "default" namespace with the label "role=db" on TCP port 6379 from:
 1） any pod in the "default" namespace with the label "role=frontend"
 2） any pod in a namespace with the label "project=myproject"
@@ -94,4 +107,84 @@ ingress: all pods in the "default" namespace with the label "role=db" on TCP por
 egress: any pod in the "default" namespace with the label "role=db" to CIDR 10.0.0.0/24 on TCP port 5978
 
 
+...
+ingress:
+- from:
+  - namespaceSelector:
+      matchLabels:
+        user: alice
+  - podSelector:
+      matchLabels:
+        role: client
+...
+
+注意，下面的写法，表示的是"AND"，两个条件都将必须满足，而上面的写法，则表示“OR”，满足一个即可。
+...
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          user: alice
+      podSelector:
+        matchLabels:
+          role: client
+  ...
+
+job，cronjob这类计算型pod不需要也不应该对外提供服务，可以拒绝所有流入流量，提高系统安全。
+
 参考资料：https://kubernetes.io/docs/concepts/services-networking/network-policies/
+
+
+4. 
+如果要使上面定义的 NetworkPolicy 在 Kubernetes 集群里真正产生作用，
+你的 CNI 网络插件就必须是支持 Kubernetes 的 NetworkPolicy 的。
+在具体实现上，凡是支持 NetworkPolicy 的 CNI 网络插件，都维护着一个 NetworkPolicy Controller，
+通过控制循环的方式对 NetworkPolicy 对象的增删改查做出响应，然后在宿主机上完成 iptables 规则的配置工作。
+
+
+在 Kubernetes 生态里，目前已经实现了 NetworkPolicy 的网络插件包括 Calico、Weave 和 kube-router 等多个项目，
+但是并不包括 Flannel 项目。
+如果想要在使用 Flannel 的同时还使用 NetworkPolicy 的话，你就需要再额外安装一个网络插件，
+比如 Calico 项目，来负责执行 NetworkPolicy：
+https://docs.projectcalico.org/v3.2/getting-started/kubernetes/installation/flannel
+
+
+5. 这些网络插件，又是如何根据 NetworkPolicy 对 Pod 进行隔离的呢？
+例子：
+apiVersion: extensions/v1beta1
+kind: NetworkPolicy
+metadata:
+  name: test-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      role: db
+  ingress:
+   - from:
+     - namespaceSelector:
+         matchLabels:
+           project: myproject
+     - podSelector:
+         matchLabels:
+           role: frontend
+     ports:
+       - protocol: tcp
+         port: 6379
+
+1）Kubernetes 的网络插件会使用 NetworkPolicy 的定义，在宿主机上生成 iptables 规则，
+上述示例伪代码：
+for dstIP := range 所有被networkpolicy.spec.podSelector选中的Pod的IP地址
+  for srcIP := range 所有被ingress.from.podSelector选中的Pod的IP地址
+    for port, protocol := range ingress.ports {
+      iptables -A KUBE-NWPLCY-CHAIN -s $srcIP -d $dstIP -p $protocol -m $protocol --dport $port -j ACCEPT 
+    }
+  }
+} 
+这条规则的名字是 KUBE-NWPLCY-CHAIN，含义是：当 IP 包的源地址是 srcIP、目的地址是 dstIP、协议是 protocol、目的端口是 port 的时候，就允许它通过（ACCEPT）。
+所以，Kubernetes 网络插件对 Pod 进行隔离，其实是靠在宿主机上生成 NetworkPolicy 对应的 iptable 规则来实现的。
+匹配这条规则所需的这四个参数，都是从 NetworkPolicy 对象里读取出来的。
+
+2）在设置好上述“隔离”规则之后，网络插件还需要想办法，将所有对被隔离 Pod 的访问请求，
+都转发到上述 KUBE-NWPLCY-CHAIN 规则上去进行匹配。
+并且，如果匹配不通过，这个请求应该被“拒绝”。
