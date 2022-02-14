@@ -197,3 +197,11 @@ for pod := range 该Node上的所有Pod {
       ...
   }
 }
+
+NetworkPolicy 实际上只是宿主机上的一系列 iptables 规则（iptables.txt）来实现。
+
+Kubernetes 的网络模型以及大多数容器网络实现，其实既不会保证容器之间二层网络的互通，也不会实现容器之间的二层网络隔离。
+这跟 IaaS 项目管理虚拟机的方式，是完全不同的。
+
+所以说，Kubernetes 从底层的设计和实现上，更倾向于假设你已经有了一套完整的物理基础设施。
+然后，Kubernetes 负责在此基础上提供一种“弱多租户”（soft multi-tenancy）的能力
