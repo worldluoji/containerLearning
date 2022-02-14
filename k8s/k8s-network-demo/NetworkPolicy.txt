@@ -187,4 +187,13 @@ for dstIP := range 所有被networkpolicy.spec.podSelector选中的Pod的IP地�
 
 2）在设置好上述“隔离”规则之后，网络插件还需要想办法，将所有对被隔离 Pod 的访问请求，
 都转发到上述 KUBE-NWPLCY-CHAIN 规则上去进行匹配。
-并且，如果匹配不通过，这个请求应该被“拒绝”。
+并且，如果匹配不通过，这个请求应该被“拒绝”。可以通过设置两组 iptables 规则来实现。
+第一组规则，负责“拦截”对被隔离 Pod 的访问请求, 伪代码如下:
+
+for pod := range 该Node上的所有Pod {
+  if pod是networkpolicy.spec.podSelector选中的 {
+      iptables -A FORWARD -d $podIP -m physdev --physdev-is-bridged -j KUBE-POD-SPECIFIC-FW-CHAIN
+      iptables -A FORWARD -d $podIP -j KUBE-POD-SPECIFIC-FW-CHAIN
+      ...
+  }
+}
