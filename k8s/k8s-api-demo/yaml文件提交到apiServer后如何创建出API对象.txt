@@ -40,3 +40,7 @@ APIServer 的第一个功能，就是过滤这个请求，并完成一些前置�
 
 5）最后，APIServer 会把验证过的 API 对象转换成用户最初提交的版本，进行序列化操作，
 并调用 Etcd 的 API 把它保存起来。
+
+从创建过程可见，APIServer 这样一个在其他项目里“平淡无奇”的组件，却成了 Kubernetes 项目的重中之重。
+它不仅是 Google Borg 设计思想的集中体现，也是 Kubernetes 项目里唯一一个被 Google 公司和 RedHat 公司双重控制，
+其他势力根本无法参与其中的组件。
