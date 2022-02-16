@@ -1,0 +1,93 @@
+yum install -y kubelet kubeadm kubectl --nogpgcheck
+K8S集群还未拉起，故这里的kubelet是无法启动的，等master初始化时会自动拉起
+
+# cat /var/lib/kubelet/config.yaml | grep group
+systemd
+结果要和 /etc/docker.daemon.json里native.cgroupdriver里一致。
+如不一致，可修改docker配置：
+{
+  "registry-mirrors": ["https://pcy9sknd.mirror.aliyuncs.com"],
+  "exec-opts": ["native.cgroupdriver=systemd"]
+}
+重启
+systemctl restart docker
+systemctl restart kubelet
+
+kubeadm init --config master-init.yaml
+
+或
+
+kubeadm init \
+  --apiserver-advertise-address=172.17.0.2 \
+  --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers \
+  --kubernetes-version v1.23.3 \
+  --service-cidr=10.92.0.0/12 \
+  --pod-network-cidr=10.220.0.0/16 \
+
+kubeadm init \
+  --apiserver-advertise-address=172.17.0.2 \
+  --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers \
+  --kubernetes-version v1.23.3 \
+  --pod-network-cidr=10.244.0.0/16 \
+  --ignore-preflight-errors=Swap \
+  --v=5
+机上--v=5可以打印详细信息
+
+kubeadm 使用 eth0 的默认网络接口（通常是内网IP）做为 Master 节点的 advertise address ，
+如果我们想使用不同的网络接口，可以使用 --apiserver-advertise-address=<ip-address> 参数来设置
+
+pod-network-cidr: 指定pod网络的IP地址范围，它的值取决于你在下一步选择的哪个网络网络插件，
+比如使用的是Calico网络，需要指定为192.168.0.0/16
+
+kubeadm init如果失败，可以kubeadm reset， 修改问题后，再重新kubeadm init
+
+前置工作：
+1. 关闭 Swap 交换分区（启用了 Swap，则 Qos 策略可能会失效）
+swapoff -a && sed -i "s/\/dev\/mapper\/centos-swap/\#\/dev\/mapper\/centos-swap/g" /etc/fstab
+
+2. yum配置阿里云源
+sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo      
+
+3. docker安装
+yum install -y docker-ce
+systemctl start docker && systemctl enable docker 
+
+卸载：
+systemctl stop docker
+yum remove -y docker*
+
+docker 最新版本安装：
+curl -fsSL https://get.docker.com/ | sh
+
+4. 配置kubernetes.repo为阿里云源，否则需要fq
+tee /etc/yum.repos.d/kubernetes.repo <<-'EOF'
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
+
+
+5.配置 Hosts 解析（添加 k8s 所有节点的 IP 和对应主机名，否则初始化的时候会出现告警甚至错误）
+tee /etc/hosts <<-'EOF'
+::1     localhost       localhost.localdomain   localhost6      localhost6.localdomain6
+127.0.0.1       localhost       localhost.localdomain   localhost4      localhost4.localdomain4
+192.168.0.123 kube-master
+192.168.0.122 kube-node1
+192.168.0.121 kube-node2
+EOF
+这里配置的是节点的实际IP
+hostnamectl set-hostname <hostname> 可以设置本机的hostname
+
+6. 关闭seLinux和防火墙  
+ #getenforce 可以查看seLinux状态
+ sed -i '/^SELINUX/s/enforcing/disabled/' /etc/selinux/config
+
+systemctl stop firewalld
+systemctl disable firewalld
+
+注意，kubernates版本和docker也要配套
