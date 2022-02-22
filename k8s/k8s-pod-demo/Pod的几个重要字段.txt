@@ -228,3 +228,10 @@ to finish its startup. Once the startup probe has succeeded once,
 the liveness probe takes over to provide a fast response to container deadlocks. 
 If the startup probe never succeeds, the container is killed after 300s 
 and subject to the pod's restartPolicy.
+
+12. resouceVersion
+当pod启动成功后，在matadata西面有一个resourceVersion字段：
+[minikuber@kube-master exercise2]$ kubectl get pod  cache -n core -oyaml | grep resourceVersion
+resourceVersion: "304572"
+这个字段用于做乐观锁，防止控制器同一时间对一个POD进行修改，而这个字段其实就是etcd MVVC模块里的modified字段。
+kubernetes所有对象都带有resourceVersion字段。
