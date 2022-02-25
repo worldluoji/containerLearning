@@ -151,3 +151,18 @@ spec:
 这个控制循环叫VolumeManagerReconciler，运行在独立的Goroutine，不会阻塞kubelet主循环。
 
 完成这两步，PV对应的“持久化 Volume”就准备好了，POD可以正常启动，将“持久化 Volume”挂载在容器内指定的路径。
+
+
+9. 总结
+PVC 描述的，是 Pod 想要使用的持久化存储的属性，比如存储的大小、读写权限等。
+PV 描述的，则是一个具体的 Volume 的属性，比如 Volume 的类型、挂载目录、远程存储服务器地址等。
+而 StorageClass 的作用，则是充当 PV 的模板。并且，只有同属于一个 StorageClass 的 PV 和 PVC，才可以绑定在一起。
+当然，StorageClass 的另一个重要作用，是指定 PV 的 Provisioner（存储插件）。
+这时候，如果你的存储插件支持 Dynamic Provisioning 的话，Kubernetes 就可以自动为你创建 PV 了。
+
+需要注意的是，StorageClass 并不是专门为了 Dynamic Provisioning 而设计的。
+比如，在本篇一开始的例子里，我在 PV 和 PVC 里都声明了 storageClassName=manual。
+而我的集群里，实际上并没有一个名叫 manual 的 StorageClass 对象。
+这完全没有问题，这个时候 Kubernetes 进行的是 Static Provisioning，
+但在做绑定决策的时候，它依然会考虑 PV 和 PVC 的 StorageClass 定义。
+而这么做的好处也很明显：这个 PVC 和 PV 的绑定关系，就完全在我自己的掌控之中。
