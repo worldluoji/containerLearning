@@ -28,6 +28,102 @@ rules:
 6. 在大多数时候，我们其实都不太使用“用户”这个功能，而是直接使用 Kubernetes 里的“内置用户”。
 这个由 Kubernetes 负责管理的“内置用户”，正是我们前面曾经提到过的：ServiceAccount。
 
+默认会有一个ServiceAccount, 分配了一个secret
+[minikuber@kube-master ~]$ kubectl get serviceaccount default -oyaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  creationTimestamp: "2022-02-17T05:59:55Z"
+  name: default
+  namespace: default
+  resourceVersion: "423"
+  uid: 676c2324-31b2-445a-8e11-1687c28668a6
+secrets:
+- name: default-token-vr4pt
+
+查看这个secret
+[minikuber@kube-master pod_demos]$ kubectl get secret default-token-vr4pt -oyaml
+apiVersion: v1
+data:
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCakNDQWU2Z0F3SUJBZ0lCQVRBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwdGFXNXAKYTNWaVpVTkJNQjRYRFRJeU1ESXhOakExTlRreU9Gb1hEVE15TURJeE5UQTFOVGt5T0Zvd0ZURVRNQkVHQTFVRQpBeE1LYldsdWFXdDFZbVZEUVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTGZiCkVmQnRUS1dlNHAwSklIUWg5a3lRU2NlcXAyVXJBUjFYdHk5L2VES2ZLcjZLSWZwNDBRNmRKZGlzd3BNenNyeFAKSU1peXhOSGdROWptUjVvTHF5OHhBQjh3WEoxQTdhUFVWZUFibmNLdzlaeEZNUGo5d0VHbzBjU3JtUDVCY0VYawpZbGxkbC94dXM0VGVhSlRqK3U5WmxLdmkrUEF6WTN3YmY4SENpeUNTQnFMN3NpTnNnbjNJK0g3UFB6b2R4aXhJCjlqMWlPT1NxUjh5N3pwVEYydTI2d1JCSEZYdUNFSEdVZ2tockZmNGdjdUxic2tNWmZhaWdtOWsrZXZTNExXYjgKV2dSQVVTbDdhbTR6MDlvd0l6SzN6cXQ3RHI0Ynp6N2VUTStpZjE5L3l1dDV3WjJlT0tmV2NibnpDS1ZLR3RnbwprbERhMm9LZm1FOWxWQzFyT05rQ0F3RUFBYU5oTUY4d0RnWURWUjBQQVFIL0JBUURBZ0trTUIwR0ExVWRKUVFXCk1CUUdDQ3NHQVFVRkJ3TUNCZ2dyQmdFRkJRY0RBVEFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVcKQkJTRC9MTmNqSSt3ZWwzcW01QnlmUVFSZUFiR0R6QU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFqazMzdk04cQp4dHpvSXJFaFBuaTdTT2ZJOXExNnYrY2NRNGIyM0tYbjdxWEZoWkthVk1OOHVsRzR0UW0reGliOHNwVGZGYlBqCjdkT2ROYUZVM3JEZXRnNWNFWExOb2pvbG9MY2R1dEpXMmlYWEswSi9nSWlrMTFJT093UkpNRjhVaU4zSVhOVWsKYlB2NkJaNE1jK1BGQWF0OEZJZDIvQm82SEx1OW5qZkx6ZzBVR2JLeVQ5bTJIaXl1NGZvRHNvQ3ZsaFJQSXBadApUUnNQam9OOFdQTWV2U0lhcWZlOXJmczBnNHBKNHhweXhSVTRPQi94d0JnNStwNHJBZTk2Z0JJLzZ2ZVZYTU5YCnVqZktBVEZKRUtxRlJhKzB6ZVJ4cTg0ZGZSRE52MXhGNTFHUlAvQkJ2ZHVrTjhPWUJzTTJhYzdMeG1GVnNVSjMKWTI5cFFDME84RUVRdVE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  namespace: ZGVmYXVsdA==
+  token: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNklrNVVPV2Q2VVdweE1IUXpXVzVvTmt4blpFcFBUMms0UlVwcWFqUm5XV3RsZHpJNFFVTlRiR2hLYTBVaWZRLmV5SnBjM01pT2lKcmRXSmxjbTVsZEdWekwzTmxjblpwWTJWaFkyTnZkVzUwSWl3aWEzVmlaWEp1WlhSbGN5NXBieTl6WlhKMmFXTmxZV05qYjNWdWRDOXVZVzFsYzNCaFkyVWlPaUprWldaaGRXeDBJaXdpYTNWaVpYSnVaWFJsY3k1cGJ5OXpaWEoyYVdObFlXTmpiM1Z1ZEM5elpXTnlaWFF1Ym1GdFpTSTZJbVJsWm1GMWJIUXRkRzlyWlc0dGRuSTBjSFFpTENKcmRXSmxjbTVsZEdWekxtbHZMM05sY25acFkyVmhZMk52ZFc1MEwzTmxjblpwWTJVdFlXTmpiM1Z1ZEM1dVlXMWxJam9pWkdWbVlYVnNkQ0lzSW10MVltVnlibVYwWlhNdWFXOHZjMlZ5ZG1salpXRmpZMjkxYm5RdmMyVnlkbWxqWlMxaFkyTnZkVzUwTG5WcFpDSTZJalkzTm1NeU16STBMVE14WWpJdE5EUTFZUzA0WlRFeExURTJPRGRqTWpnMk5qaGhOaUlzSW5OMVlpSTZJbk41YzNSbGJUcHpaWEoyYVdObFlXTmpiM1Z1ZERwa1pXWmhkV3gwT21SbFptRjFiSFFpZlEuV0RuaU5HV2s3c1dwTTBOcEhpeVg3OXhWcVJ1U2xRNVFCNVotNUxoUXc4el9oMDE3dzFRSkVCUkY2d29yRm5sWlJOMk1vakNxLXZqVDg4NVdQVkhpdURiRG9sbWJJVGtlb254azdsSHJNVHlFbFlPYkRVaFJmUUdUQkpzYzdza2N5SmJyVnJrYmM0QW4xbEZJLW82WHdaOTZPZVBrTWFUc2ljUW40UERqaXdoQjM2VnVsWVBxZERibHdGS2FuR3JBMUtjYmhEUnFZR3hvMnJyRFA4QlhvUEwwY0Q4dkJBeGhCRzNGTks4RC16Sy05enFWaml0VjR1N2NCekxBSWsxdTZQRGdjVjkzdE1yTXZhRXpqTDFSbk1fdU1ONGlnSmREdnJiQVYwVC1Wc29VSnRmeW9BeExVQWt3QkFILW1mYUx3VnlzWXl4bEYyQ0RNZncwN0k0REV3
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: default
+    kubernetes.io/service-account.uid: 676c2324-31b2-445a-8e11-1687c28668a6
+  creationTimestamp: "2022-02-17T05:59:55Z"
+  ...
+可以看到，这个secret里就包括了ca证书，namespace, token，都是base64的，我们解码出来：
+echo ZGVmYXVsdA== | base64 -d
+default
+
+token解码出来是一个jwt令牌：
+eyJhbGciOiJSUzI1NiIsImtpZCI6Ik5UOWd6UWpxMHQzWW5oNkxnZEpPT2k4RUpqajRnWWtldzI4QUNTbGhKa0UifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtdG9rZW4tdnI0cHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGVmYXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjY3NmMyMzI0LTMxYjItNDQ1YS04ZTExLTE2ODdjMjg2NjhhNiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.WDniNGWk7sWpM0NpHiyX79xVqRuSlQ5QB5Z-5LhQw8z_h017w1QJEBRF6worFnlZRN2MojCq-vjT885WPVHiuDbDolmbITkeonxk7lHrMTyElYObDUhRfQGTBJsc7skcyJbrVrkbc4An1lFI-o6XwZ96OePkMaTsicQn4PDjiwhB36VulYPqdDblwFKanGrA1KcbhDRqYGxo2rrDP8BXoPL0cD8vBAxhBG3FNK8D-zK-9zqVjitV4u7cBzLAIk1u6PDgcV93tMrMvaEzjL1RnM_uMN4igJdDvrbAV0T-VsoUJtfyoAxLUAkwBAH-mfaLwVysYyxlF2CDMfw07I4DEw
+这个token是从APIServer出来的，带着这个token去访问kubernates集群，APIServer就知道你是合法的。
+
+我们启动一个pod
+kubectl run mynginx --image=nginx --dry-run=client -oyaml > pod_demo1.yaml
+kubectl create -f pod_demo1.yaml
+kubectl get pod mynginx -oyaml 
+可以看到： default的 serviceAccount 已经与pod绑定，并且为了让容器能够访问到，还在容器中挂载了serviceAccount
+到/var/run/secrets/kubernetes.io/serviceaccount，这样，这个pod中的容器，就能通过该路径拿到token,去访问
+APIServer, APIServer就知道它是合法的了。
+...
+containers:
+- image: nginx
+  imagePullPolicy: Always
+  name: mynginx
+  resources: {}
+  terminationMessagePath: /dev/termination-log
+  terminationMessagePolicy: File
+  volumeMounts:
+  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+    name: kube-api-access-z6mzb
+    readOnly: true
+dnsPolicy: ClusterFirst
+enableServiceLinks: true
+nodeName: minikube
+preemptionPolicy: PreemptLowerPriority
+priority: 0
+restartPolicy: Always
+schedulerName: default-scheduler
+securityContext: {}
+serviceAccount: default
+serviceAccountName: default
+terminationGracePeriodSeconds: 30
+tolerations:
+- effect: NoExecute
+  key: node.kubernetes.io/not-ready
+  operator: Exists
+  tolerationSeconds: 300
+- effect: NoExecute
+  key: node.kubernetes.io/unreachable
+  operator: Exists
+  tolerationSeconds: 300
+volumes:
+- name: kube-api-access-z6mzb
+  projected:
+    defaultMode: 420
+    sources:
+    - serviceAccountToken:
+        expirationSeconds: 3607
+        path: token
+    - configMap:
+        items:
+        - key: ca.crt
+          path: ca.crt
+        name: kube-root-ca.crt
+    - downwardAPI:
+        items:
+        - fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+          path: namespace
+
+...
+
 7. 例子：
 $ kubectl create -f svc-account.yaml
 $ kubectl create -f role-binding.yaml
