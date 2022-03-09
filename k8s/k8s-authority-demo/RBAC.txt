@@ -202,7 +202,44 @@ subjects:
 
 就意味着这个 Role 的权限规则，作用于整个系统里的所有 ServiceAccount。
 
-10. 在 Kubernetes 中已经内置了很多个为系统保留的 ClusterRole
+10. CLusterRole
+Role 和 RoleBinding 对象都是 Namespaced 对象（Namespaced Object），
+它们对权限的限制规则仅在它们自己的 Namespace 内有效，roleRef 也只能引用当前 Namespace 里的 Role 对象。
+那么，对于非 Namespaced（Non-namespaced）对象（比如：Node），或者，
+某一个 Role 想要作用于所有的 Namespace 的时候，我们又该如何去做授权呢？
+
+这时候，我们就必须要使用 ClusterRole 和 ClusterRoleBinding 这两个组合了。
+这两个 API 对象的用法跟 Role 和 RoleBinding 完全一样。只不过没有了 Namespace 字段。
+
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: example-clusterrole
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+
+...
+
+kind: ClusterRoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
+    name: example-clusterrolebinding
+  subjects:
+  - kind: User
+    name: example-user
+    apiGroup: rbac.authorization.k8s.io
+  roleRef:
+    kind: ClusterRole
+    name: example-clusterrole
+    apiGroup: rbac.authorization.k8s.io
+
+ClusterRole 和 ClusterRoleBinding 的组合，意味着名叫 example-user 的用户，
+拥有对所有 Namespace 里的 Pod 进行 GET、WATCH 和 LIST 操作的权限。
+
+11. 在 Kubernetes 中已经内置了很多个为系统保留的 ClusterRole
 它们的名字都以 system: 开头。你可以通过 kubectl get clusterroles 查看到它们。
 一般来说，这些系统 ClusterRole，是绑定给 Kubernetes 系统组件对应的 ServiceAccount 使用的。
 比如，其中一个名叫 system:kube-scheduler 的 ClusterRole，定义的权限规则是 kube-scheduler（Kubernetes 的调度器组件）运行所需要的必要权限。
