@@ -1,0 +1,9 @@
+1. 查看所有资源
+kubectl api-resources -o wide
+可见当前环境的所有资源，及其相关属性
+
+2. 查看指定资源的详情
+kubectl explain configmap
+
+3. 查看所有Group和Version的命令
+kubectl api-versions

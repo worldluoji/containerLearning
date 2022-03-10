@@ -8,6 +8,66 @@ kind: CronJob
 当我们提交了这个 YAML 文件之后，Kubernetes 就会把这个 YAML 文件里描述的内容，转换成 Kubernetes 里的一个 CronJob 对象。
 
 
+1）Group即资源组，在kubernetes对资源进行分组时，对应的数据结构就是Group，
+源码路径：k8s.io/apimachinery/pkg/apis/meta/v1/types.go ，如下，可见Group有自己的名称和版本：
+
+type APIGroup struct {
+	TypeMeta `json:",inline"`
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	Versions []GroupVersionForDiscovery `json:"versions" protobuf:"bytes,2,rep,name=versions"`
+	PreferredVersion GroupVersionForDiscovery `json:"preferredVersion,omitempty" protobuf:"bytes,3,opt,name=preferredVersion"`
+	ServerAddressByClientCIDRs []ServerAddressByClientCIDR `json:"serverAddressByClientCIDRs,omitempty" protobuf:"bytes,4,rep,name=serverAddressByClientCIDRs"`
+}
+
+在kubernetes中有两种资源组：有组名资源组和无组名资源组(也叫核心资源组Core Groups)，它们都很常见；
+比如deployment有组名，pod没有组名。
+
+2）Version即版本，这个好理解，kubernetes的版本分为三种：
+Alpha：内部测试版本，如v1alpha1
+Beta：经历了官方和社区测试的相对稳定版，如v1beta1
+Stable：正式发布版，如v1、v2
+
+数据结构源码还是在types.go文件中，如下：
+type APIVersions struct {
+	TypeMeta `json:",inline"`
+	Versions []string `json:"versions" protobuf:"bytes,1,rep,name=versions"`
+	ServerAddressByClientCIDRs []ServerAddressByClientCIDR `json:"serverAddressByClientCIDRs" protobuf:"bytes,2,rep,name=serverAddressByClientCIDRs"`
+}
+
+3）Resource
+常见的pod、service、deployment这些都是资源，下面是关于资源的一些小结：
+在kubernetes环境被实例化的资源即资源对象(ResourceObject)；
+资源被分为持久性（Persistent Entity）和非持久性（Ephemeral Entity），
+持久性如deployment，创建后会在etcd保存，非持久性如pod；
+
+资源的定义:
+type APIResource struct {
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	SingularName string `json:"singularName" protobuf:"bytes,6,opt,name=singularName"`
+	Namespaced bool `json:"namespaced" protobuf:"varint,2,opt,name=namespaced"`
+	Group string `json:"group,omitempty" protobuf:"bytes,8,opt,name=group"`
+	Version string `json:"version,omitempty" protobuf:"bytes,9,opt,name=version"`
+	Kind string `json:"kind" protobuf:"bytes,3,opt,name=kind"`
+	Verbs Verbs `json:"verbs" protobuf:"bytes,4,opt,name=verbs"`
+	ShortNames []string `json:"shortNames,omitempty" protobuf:"bytes,5,rep,name=shortNames"`
+	Categories []string `json:"categories,omitempty" protobuf:"bytes,7,rep,name=categories"`
+	StorageVersionHash string `json:"storageVersionHash,omitempty" protobuf:"bytes,10,opt,name=storageVersionHash"`
+}
+
+kubernetes为资源准备了8种操作：create、delete、deletecollection、get、list、patch、update、watch，每一种资源都支持其中的一部分，这在每个资源的API文档中可以看到；
+资源支持以命名空间（namespace）进行隔离；
+资源对象描述文件在日常操作中频繁用到，一共由五部分组成：apiVersion、kind、metadata、spec、status
+
+status，该部分是用来反应当前资源对象状态的，体现在资源的数据结构中：
+
+type Deployment struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Spec DeploymentSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status DeploymentStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+
 2. Kubernetes 是如何对 Resource、Group 和 Version 进行解析，从而在 Kubernetes 项目里找到 CronJob 对象的定义呢？
 1）首先，Kubernetes 会匹配 API 对象的组。
 需要明确的是，对于 Kubernetes 里的核心 API 对象，比如：Pod、Node 等，是不需要 Group 的（即：它们的 Group 是“”）。
@@ -44,3 +104,8 @@ APIServer 的第一个功能，就是过滤这个请求，并完成一些前置�
 从创建过程可见，APIServer 这样一个在其他项目里“平淡无奇”的组件，却成了 Kubernetes 项目的重中之重。
 它不仅是 Google Borg 设计思想的集中体现，也是 Kubernetes 项目里唯一一个被 Google 公司和 RedHat 公司双重控制，
 其他势力根本无法参与其中的组件。
+
+参考：1. 极客时间张磊 深入剖析Kubernates
+     2.  https://xinchen.blog.csdn.net/article/details/113715847 
+     3.  https://kubernetes.io/docs/reference/kubernetes-api/
+     4.  https://v1-19.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/
