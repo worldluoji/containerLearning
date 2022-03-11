@@ -28,7 +28,7 @@ rules:
 6. 在大多数时候，我们其实都不太使用“用户”这个功能，而是直接使用 Kubernetes 里的“内置用户”。
 这个由 Kubernetes 负责管理的“内置用户”，正是我们前面曾经提到过的：ServiceAccount。
 
-默认会有一个ServiceAccount, 分配了一个secret
+每个namespace默认会有一个ServiceAccount, 分配了一个secret
 [minikuber@kube-master ~]$ kubectl get serviceaccount default -oyaml
 apiVersion: v1
 kind: ServiceAccount
