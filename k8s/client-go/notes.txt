@@ -123,6 +123,71 @@ type DeploymentInterface interface {
 
 -> clientsetdemo
 
-6. 参考文档
+6. DynamicClient
+如果要处理的不是kubernetes的内置资源呢？比如CRD，Clientset的代码中可没有用户自定义的东西，
+显然就用不上Clientset了，此时就需要使用dynamicClient。
+
+1）两个重要的知识点
+Object.runtime和Unstructured
+
+在kubernetes的代码世界中，资源对象对应着具体的数据结构，这些数据结构都实现了同一个接口，名为Object.runtime，
+源码位置是staging/src/k8s.io/apimachinery/pkg/runtime/interfaces.go，定义如下：
+type Object interface {
+	GetObjectKind() schema.ObjectKind
+	DeepCopyObject() Object
+}
+DeepCopyObject方法顾名思义，就是深拷贝，也就是将内存中的对象克隆出一个新的对象；
+至于GetObjectKind方法的作用，相信聪明的您也猜到了：处理Object.runtime类型的变量时，
+只要调用其GetObjectKind方法就知道它的具体身份了（如deployment，service等）；
+最后再次强调：资源对象都是Object.runtime的实现；
+
+与结构化数据相对的就是非结构化数据了（Unstructured Data），在实际的kubernetes环境中，
+可能会遇到一些无法预知结构的数据，例如JSON串中某个字段，字段值的具体内容和类型在编码时并不知晓，
+而是在真正运行的时候才知道，那么在编码时如何处理呢？相信您会想到用interface{}来表示，
+实际上client-go也是这么做的，来看Unstructured数据结构的源码，路径是
+staging/src/k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructured.go：
+
+type Unstructured struct {
+	// Object is a JSON compatible map with string, float, int, bool, []interface{}, or
+	// map[string]interface{}
+	// children.
+	Object map[string]interface{}
+}
+
+显然，上述数据结构定义并不能发挥什么作用，真正重要的是关联的方法。
+client-go已经为Unstructured准备了丰富的方法，借助这些方法可以灵活的处理非结构化数据。
+
+可以用Unstructured实例生成资源对象，也可以用资源对象生成Unstructured实例，
+这个神奇的能力是unstructuredConverter的FromUnstructured和ToUnstructured方法分别实现的，
+下面的代码片段展示了如何将Unstructured实例转为PodList实例：
+
+// 实例化一个PodList数据结构，用于接收从unstructObj转换后的结果
+podList := &apiv1.PodList{}
+
+// unstructObj
+err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructObj.UnstructuredContent(), podList)
+
+可以查看FromUnstructured方法源码，里面使用了反射。
+Unstructured转为资源对象的套路并不神秘，无非是用反射取得资源对象的字段类型，
+然后按照字段名去Unstructured的map中取得原始数据，再用反射设置到资源对象的字段中即可。
+把Clientset不支持的资源对象交给Unstructured来承载，这样就可以处理我们自定义的CRD了。
+
+
+2）dynamicClient数据结构
+type dynamicClient struct {
+	client *rest.RESTClient
+}
+
+func (c *dynamicClient) Resource(resource schema.GroupVersionResource) NamespaceableResourceInterface {
+	return &dynamicResourceClient{client: c, resource: resource}
+}
+dynamicClient所有和资源相关的操作都是dynamicResourceClient在做。
+
+与Clientset不同，dynamicClient为各种类型的资源都提供统一的操作API，资源需要包装为Unstructured数据结构。
+
+3) 实战
+查询指定namespace下的所有pod，然后在控制台打印出来，要求用dynamicClient实现
+
+7. 参考文档
 1）博客文章 https://xinchen.blog.csdn.net/article/details/113487087
 2）官方文档 https://v1-19.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/
