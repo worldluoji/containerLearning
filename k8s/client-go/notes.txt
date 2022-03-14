@@ -66,6 +66,9 @@ kubernetes的Group和Version的每个组合，都对应Clientset数据结构的�
 Clientset是所有Group和Version组合对象的集合,
 其实就是把我们使用RESTClient操作资源的代码按照Group和Version分类再封装而已，
 
+内置的对象，都可以从clientset.go中找到
+// Clientset contains the clients for groups. Each group has exactly one
+// version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	admissionregistrationV1      *admissionregistrationv1.AdmissionregistrationV1Client
@@ -75,12 +78,39 @@ type Clientset struct {
 	appsV1beta1                  *appsv1beta1.AppsV1beta1Client
 	appsV1beta2                  *appsv1beta2.AppsV1beta2Client
 	authenticationV1             *authenticationv1.AuthenticationV1Client
-......
+	authenticationV1beta1        *authenticationv1beta1.AuthenticationV1beta1Client
+	authorizationV1              *authorizationv1.AuthorizationV1Client
+	authorizationV1beta1         *authorizationv1beta1.AuthorizationV1beta1Client
+	autoscalingV1                *autoscalingv1.AutoscalingV1Client
+	autoscalingV2beta1           *autoscalingv2beta1.AutoscalingV2beta1Client
+	autoscalingV2beta2           *autoscalingv2beta2.AutoscalingV2beta2Client
+	batchV1                      *batchv1.BatchV1Client
+	batchV1beta1                 *batchv1beta1.BatchV1beta1Client
+	batchV2alpha1                *batchv2alpha1.BatchV2alpha1Client
+	......
 
-以appsV1字段为例，去看看其类型appsv1.AppsV1Client，
+以appsV1字段为例，去看看其类型appsv1.AppsV1Client(因为Deployment的apiversion: apps/v1)，
 AppsV1Client只有一字段，就是咱们熟悉的restClient，所以RESTClient是Clientset的基础.
 顺藤摸瓜去看DeploymentInterface，打开deployment.go文件后真相大白，接口定义的和实现一目了然，
 包含了Deployment的增删查改等操作。
+// DeploymentInterface has methods to work with Deployment resources.
+type DeploymentInterface interface {
+	Create(ctx context.Context, deployment *v1.Deployment, opts metav1.CreateOptions) (*v1.Deployment, error)
+	Update(ctx context.Context, deployment *v1.Deployment, opts metav1.UpdateOptions) (*v1.Deployment, error)
+	UpdateStatus(ctx context.Context, deployment *v1.Deployment, opts metav1.UpdateOptions) (*v1.Deployment, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Deployment, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.DeploymentList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Deployment, err error)
+	GetScale(ctx context.Context, deploymentName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
+	UpdateScale(ctx context.Context, deploymentName string, scale *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error)
+
+	DeploymentExpansion
+}
+.......
+
 
 实战内容：
 写一段代码，检查用户输入的operate参数，该参数默认是create，也可以接受clean；
