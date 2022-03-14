@@ -187,6 +187,7 @@ dynamicClient所有和资源相关的操作都是dynamicResourceClient在做。
 
 3) 实战
 查询指定namespace下的所有pod，然后在控制台打印出来，要求用dynamicClient实现
+->dynamicclientdemo
 
 7. 参考文档
 1）博客文章 https://xinchen.blog.csdn.net/article/details/113487087
