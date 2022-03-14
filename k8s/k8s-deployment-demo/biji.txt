@@ -66,9 +66,13 @@ for {
 实际状态来自于k8s集群本身，期望状态就是用户编写的yaml文件。
 
 
-10. 需要注意的是，像这样使用一种 API 对象（Deployment）管理另一种 API 对象（Pod）的方法，在 Kubernetes 中，叫作“控制器”模式（controller pattern）。在我们的例子中，Deployment 扮演的正是 Pod 的控制器的角色。
+10. 需要注意的是，像这样使用一种 API 对象（Deployment）管理另一种 API 对象（Pod）的方法，
+在 Kubernetes 中，叫作“控制器”模式（controller pattern）。
+在我们的例子中，Deployment 扮演的正是 Pod 的控制器的角色。
 
-11. kubectl get 指令的作用，就是从 Kubernetes 里面获取（GET）指定的 API 对象。可以看到，在这里我还加上了一个 -l 参数，即获取所有匹配 app: nginx 标签的 Pod。需要注意的是，在命令行中，所有 key-value 格式的参数，都使用“=”而非“:”表示。
+11. kubectl get 指令的作用，就是从 Kubernetes 里面获取（GET）指定的 API 对象。
+可以看到，在这里我还加上了一个 -l 参数，即获取所有匹配 app: nginx 标签的 Pod。
+需要注意的是，在命令行中，所有 key-value 格式的参数，都使用“=”而非“:”表示。
 $ kubectl get pods -l app=nginx
 NAME                                READY     STATUS    RESTARTS   AGE
 nginx-deployment-67594d6bf6-9gdvr   1/1       Running   0          10m
