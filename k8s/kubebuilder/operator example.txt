@@ -1,0 +1,109 @@
+1. 需求
+开发一个operator（名为elasticweb）
+1) 只要将手里的三个参数（docker镜像、单个pod的QPS、总QPS）告诉elasticweb就完事儿了；
+2) elasticweb在kubernetes创建pod，至于pod数量当然是自动算出来的，要确保能满足QPS要求，
+比如，如果一个POD QPS为400，需要两个pod才能满足800的QPS；
+3）单个pod的QPS和总QPS都随时可能变化，一旦有变，elasticweb也要自动调整pod数量，以确保服务质量；
+4）为了确保服务可以被外部调用，需要创建好service。
+
+其实kubernetes早就有现成的QPS调节方案了，例如修改deployment的副本数、单个pod纵向扩容、autoscale等都可以，
+本次使用operator来实现仅仅是为了展示operator的开发过程，并不是说自定义operator是唯一的解决方案。
+
+为了不把事情弄复杂，假设每个pod所需的CPU和内存是固定的，直接在operator代码中写死，其实您也可以自己改代码，
+改成可以在外部配置，就像镜像名称参数那样。
+
+
+2. 设计
+CRD设计之Spec部分
+Spec是用来保存用户的期望值的，也就三个参数（docker镜像、单个pod的QPS、总QPS），再加上端口号：
+
+image：业务服务对应的镜像
+port：service占用的宿主机端口，外部请求通过此端口访问pod的服务
+singlePodQPS：单个pod的QPS上限
+totalQPS：当前整个业务的总QPS
+
+
+CRD设计之Status部分
+Status用来保存实际值，这里设计成只有一个字段realQPS，表示当前整个operator实际能支持的QPS，这样无论何时，
+只要用kubectl describe命令就能知道当前系统实际上能支持多少QPS；
+
+
+业务逻辑设计
+CRD的完成代表核心数据结构已经确定，接下来是业务逻辑的设计，主要是理清楚controller的Reconcile方法里面做些啥，
+其实核心逻辑还是非常简单的：算出需要多少个pod，然后通过更新deployment让pod数量达到要求，
+在此核心的基础上再把创建deployment和service、更新status这些琐碎的事情做好，就完事儿了。
+
+3. 开发
+
+1) 构建项目，并用kubebuilder生成框架代码
+新建名为elasticweb的文件夹，在里面执行以下命令即可创建名为elasticweb的项目，domain为com.bolingcavalry：
+go mod init elasticweb
+kubebuilder init --domain com.firstoperator
+
+然后是CRD，执行以下命令即可创建相关资源：
+kubebuilder create api \
+--group elasticweb \
+--version v1 \
+--kind ElasticWeb
+
+2）开发type
+打开文件api/v1/elasticweb_types.go，做以下几步改动：
+修改数据结构ElasticWebSpec，增加设计的四个字段；
+修改数据结构ElasticWebStatus，增加前文设计的一个字段；
+增加String方法，这样打印日志时方便我们查看，注意RealQPS字段是指针，因此可能为空，需要判空；
+
+3) 开发controller
+打开文件elasticweb/controllers/elasticweb_controller.go
+
+第一步：添加资源访问权限
+elasticweb会对service、deployment这两种资源做查询、新增、修改等操作，因此需要这些资源的操作权限，
+增加两行注释，这样代码生成工具就会在RBAC配置中增加对应的权限。
+
+第二步：定义常量
+const (
+	// deployment中的APP标签名
+	APP_NAME = "elastic-app"
+	// tomcat容器的端口号
+	CONTAINER_PORT = 8080
+	// 单个POD的CPU资源申请
+	CPU_REQUEST = "100m"
+	// 单个POD的CPU资源上限
+	CPU_LIMIT = "100m"
+	// 单个POD的内存资源申请
+	MEM_REQUEST = "128Mi"
+	// 单个POD的内存资源上限
+	MEM_LIMIT = "128Mi"
+)
+
+第三步：方法编写
+getExpectReplicas：根据单个pod的QPS和总QPS，计算需要多少个pod，咱们将这个逻辑封装到一个方法中以便使用。
+
+createServiceIfNotExists
+将创建service的操作封装到一个方法中，是的主干代码的逻辑更清晰，可读性更强；
+创建service的时候，有几处要注意：
+先查看service是否存在，不存在才创建；
+将service和CRD实例elasticWeb建立关联(controllerutil.SetControllerReference方法)，这样当elasticWeb被删除的时候，service会被自动删除而无需我们干预；
+创建service的时候用到了client-go工具。
+
+createDeployment
+将创建deployment的操作封装在一个方法中，同样是为了将主干逻辑保持简洁；
+创建deployment的方法也有几处要注意：
+调用getExpectReplicas方法得到要创建的pod的数量，该数量是创建deployment时的一个重要参数；
+每个pod所需的CPU和内存资源也是deployment的参数；
+将deployment和elasticweb建立关联，这样删除elasticweb的时候deplyment就会被自动删除了；
+同样是使用client-go客户端工具创建deployment资源。
+
+updateStatus
+不论是创建deployment资源对象，还是对已有的deployment的pod数量做调整，这些操作完成后都要去修改Status，
+既实际的状态，这样外部才能随时随地知道当前elasticweb支持多大的QPS，
+因此需要将修改Status的操作封装到一个方法中，给多个场景使用，
+Status的计算逻辑很简单：pod数量乘以每个pod的QPS就是总QPS了。
+
+第四步：Reconcile方法中编写主干代码
+
+->elasticweb
+
+4) 部署到集群
+第一步：部署CRD
+在elasticweb目录下执行make install部署CRD到kubernetes，
+部署成功后，用kubectl api-versions命令可以查到该GV。
