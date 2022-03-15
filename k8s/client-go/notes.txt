@@ -189,6 +189,16 @@ dynamicClient所有和资源相关的操作都是dynamicResourceClient在做。
 查询指定namespace下的所有pod，然后在控制台打印出来，要求用dynamicClient实现
 ->dynamicclientdemo
 
-7. 参考文档
+7. DiscoveryClient
+Clientset和dynamicClient都是面向资源对象的（例如创建deployment实例、查看pod实例），
+而DiscoveryClient则不同，它聚焦的是资源，例如查看当前kubernetes有哪些Group、Version、Resource。
+
+DiscoveryClient数据结构有两个字段：restClient和LegacyPrefix，
+这个LegacyPrefix是url中的一部分。
+
+实战：从kubernetes查询所有的Group、Version、Resource信息，在控制台打印出来。
+->discoveryclientdemo
+
+8. 参考文档
 1）博客文章 https://xinchen.blog.csdn.net/article/details/113487087
 2）官方文档 https://v1-19.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/
