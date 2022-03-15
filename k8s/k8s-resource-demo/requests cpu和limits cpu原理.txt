@@ -16,7 +16,9 @@ spec:
         cpu: "2"
 
 Limits CPU 就是容器所在 Cgroup 控制组中的 CPU 上限值，由cpu.cfs_quota_us 和 cpu.cfs_period_us两个值决定。
-Requests CPU 的值就是控制组中的 cpu.shares 的值。
+即在cpu.cfs_period_us周期内分配cpu.cfs_quota_us时间给你用。
+Requests CPU 的值就是控制组中的 cpu.shares 的值。语义其实就是我想要多少资源，如果没有竞争，就
+分1个CPU，如果有竞争，就和竞争者按比例分配。
 
 cpu=1 指的就是，这个 Pod 的 CPU 限额是 1 个 CPU。当然，具体“1 个 CPU”在宿主机上如何解释，
 是 1 个 CPU 核心，还是 1 个 vCPU，还是 1 个 CPU 的超线程（Hyperthread），完全取决于宿主机的 CPU 实现方式。
@@ -121,3 +123,21 @@ spec:
         cpu: "2"
 
 这时候，该 Pod 就会被绑定在 2 个独占的 CPU 核上。当然，具体是哪两个 CPU 核，是由 kubelet 为你分配的。
+
+5. LimitRange （了解）
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cpu-min-max-demo-lr
+spec:
+  limits:
+  - max:
+      cpu: "800m"
+    min:
+      cpu: "200m"
+    type: Container
+
+如果设置了上面的limit range， 但是pod的yaml中没有设置resource对cpu进行显示设置，
+就会用上面LimitRange的参数进行限制。
+但是，这个对象不常用，因为它会对POD中的每个容器都进行相同的限制，有时候我们的POD里不止1个容器。
