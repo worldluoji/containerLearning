@@ -199,6 +199,8 @@ DiscoveryClient数据结构有两个字段：restClient和LegacyPrefix，
 实战：从kubernetes查询所有的Group、Version、Resource信息，在控制台打印出来。
 ->discoveryclientdemo
 
+值得一提的是，kubectl api-versions 就是使用了DiscoveryClient。
+
 8. 参考文档
 1）博客文章 https://xinchen.blog.csdn.net/article/details/113487087
 2）官方文档 https://v1-19.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/
