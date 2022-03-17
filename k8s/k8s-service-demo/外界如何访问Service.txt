@@ -17,7 +17,12 @@ ExternalName: Maps the Service to the contents of the externalName field (e.g. f
 1. 使用nodePort
 参考service-nginx-nodeport.yaml
 原理是kube-proxy在每台宿主机上生成这样一条 iptables 规则
-在nodePort模式下，关于端口的有三个参数，port, nodePort, targetPort
+在nodePort模式下，关于端口的有三个参数，
+port：Service的port
+nodePort: 节点的port
+targetPort: Service代理的port,即pod中容器的port
+A Service can map any incoming port to a targetPort. 
+By default and for convenience, the targetPort is set to the same value as the port field.
 如果如下定义
 spec:
   type: NodePort

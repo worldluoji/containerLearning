@@ -1,0 +1,85 @@
+Init 容器是一种特殊容器，在 Pod 内的应用容器启动之前运行.
+
+Init 容器与普通的容器非常像，除了如下两点：
+1）Init containers always run to completion.
+2）Each init container must complete successfully before the next one starts.
+
+If a Pod's init container fails, the kubelet repeatedly restarts that init container 
+until it succeeds. However, if the Pod has a restartPolicy of Never, 
+and an init container fails during startup of that Pod, 
+Kubernetes treats the overall Pod as failed.
+
+
+Init 容器不支持 lifecycle、livenessProbe、readinessProbe 和 startupProbe， 
+因为init container必须在 Pod 就绪之前运行完成。
+如果为一个 Pod 指定了多个 Init 容器，这些容器会按顺序逐个运行。 
+每个 Init 容器必须运行成功，下一个才能够运行。
+当所有的 Init 容器运行完成时， Kubernetes 才会为 Pod 初始化应用容器并像平常一样运行。
+
+
+例子：
+
+定义了一个具有 2 个 Init 容器的简单 Pod。 第一个等待 myservice 这个Service启动， 
+第二个等待 mydb 这个Service启动。 
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
+  - name: init-mydb
+    image: busybox:1.28
+    command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
+
+
+一旦这两个Service创建，这两个 Init容器 都会启动完成，Pod 将启动 spec 节中的应用容器。
+apiVersion: v1
+kind: Service
+metadata:
+    name: myservice
+spec:
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: mydb
+spec:
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9377
+
+
+值得一说的是，进入容器
+kubectl exec -it myapp-pod /bin/sh
+
+/ # cat /var/run/secrets/kubernetes.io/serviceaccount/namespace
+default/ # 
+得到的就是pod所在的namespace
+
+/ # nslookup mydb.default.svc.cluster.local
+Server:    10.96.0.10
+Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      mydb.default.svc.cluster.local
+Address 1: 10.99.222.9 mydb.default.svc.cluster.local
+
+创建Cluster IP（默认）的 service 会以my-svc.namespace.svc.cluster.local 的形式指派一个 DNS A 记录，
+并解析到该service的Cluster IP.
+
+参考：https://kubernetes.io/zh/docs/concepts/workloads/pods/init-containers/
