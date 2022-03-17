@@ -1,0 +1,53 @@
+污点 ( Taint ) 的组成
+使用kubectl taint命令可以给某个Node节点设置污点
+
+每个污点的组成如下：
+key=value:effect
+每个污点有一个 key 和 value 作为污点的标签，其中 value 可以为空，eﬀect 描述污点的作用。
+当前 taint eﬀect 支持如下三个选项：
+NoSchedule ：表示k8s将不会将Pod调度到具有该污点的Node上
+PreferNoSchedule ：表示k8s将尽量避免将Pod调度到具有该污点的Node上
+NoExecute ：表示k8s将不会将Pod调度到具有该污点的Node上，同时会将Node上已经存在的Pod驱逐出去
+
+污点的设置、查看和去除
+设置污点
+kubectl taint nodes node1 key1=value1:NoSchedule
+
+节点说明中，查找Taints字段
+kubectl describe nodes node1
+
+去除污点
+kubectl taint nodes node1 key1=value1:NoSchedule-
+
+为node设置taint后，可以为pod设置toleration, 表示POD可以忍受对应的污点（调度到有污点的node上）：
+
+tolerations:
+- key: "key1"
+  operator: "Equal"
+  value: "value1"
+  effect: "NoSchedule"
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  tolerations:
+  - key: "key1"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+
+operator 的默认值是 Equal。
+一个容忍度和一个污点相“匹配”是指它们有一样的键名和效果，并且：
+如果 operator 是 Exists （此时容忍度不能指定 value），或者
+如果 operator 是 Equal ，则它们的 value 应该相等
+
+参考：https://kubernetes.io/zh/docs/concepts/scheduling-eviction/taint-and-toleration/
