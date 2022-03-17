@@ -51,3 +51,20 @@ operator 的默认值是 Equal。
 如果 operator 是 Equal ，则它们的 value 应该相等
 
 参考：https://kubernetes.io/zh/docs/concepts/scheduling-eviction/taint-and-toleration/
+
+
+我们可以看到，一个正常启动的pod，会被打上下面的两个tolerations，NoExecute是驱逐，
+即在not-ready或者unreachable的node上，会把pod驱逐。这也带给了kubernates故障转移的能力。
+当一个node出现问题时，超过300ms, pod会被驱逐，从而调度到别的node上。
+tolerations:
+- effect: NoExecute
+  key: node.kubernetes.io/not-ready
+  operator: Exists
+  tolerationSeconds: 300
+- effect: NoExecute
+  key: node.kubernetes.io/unreachable
+  operator: Exists
+  tolerationSeconds: 300
+
+
+另一个需要注意的是，打了toleration的POD并不一定都会调度到打了taint的node上的。
