@@ -72,3 +72,18 @@ kubectl run -i --tty --image busybox:1.28.4 dns-test --restart=Never --rm /bin/s
 我也是google到了 https://github.com/kubernetes/kubernetes/issues/66924 才知道的.
 再看楼下的评论,才发现有其他同学也遇到了,且在几天前已经给出了解决方案. 👍
 新技术确实变化太快了,作者在写文章时用的没问题,也许隔一天因为某个默认镜像修改了,就会出现新的状况.
+
+5. 更新
+Kubernetes 1.7 版本的 StatefulSet 控制器支持自动更新。 
+更新策略由 StatefulSet API Object 的spec.updateStrategy 字段决定。
+这个特性能够用来更新一个 StatefulSet 中的 Pod 的 container images，resource requests，
+以及 limits，labels 和 annotations。
+RollingUpdate滚动更新是 StatefulSets 默认策略：
+kubectl patch statefulset web -p '{"spec":{"updateStrategy":{"type":"RollingUpdate"}}}'
+
+可以使用 RollingUpdate 更新策略的 partition 参数来分段更新一个 StatefulSet。 
+比如：
+kubectl patch statefulset web -p '{"spec":{"updateStrategy":{"type":"RollingUpdate","rollingUpdate":{"partition":3}}}}'
+只会更新序号>=3的pod, 其余pod还是保持原样。这样就可以达到灰度发布的目的。
+
+参考：https://kubernetes.io/zh/docs/tutorials/stateful-application/basic-stateful-set/
