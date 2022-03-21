@@ -14,3 +14,4 @@ spec:
 
   # bc 命令是 Linux 里的“计算器”；-l 表示，我现在要使用标准数学库；
   # 而 a(1)，则是调用数学库中的 arctangent 函数，计算 atan(1)
+  # 当restartPolicy为OnFailure时，backoffLimit表示失败后重试几次
