@@ -1,0 +1,73 @@
+1. Horizontal Pod Autoscaling
+Horizontal scaling means that the response to increased load is to deploy more Pods. 
+This is different from vertical scaling, which for Kubernetes would mean 
+assigning more resources (for example: memory or CPU) to the Pods 
+that are already running for the workload.
+
+If the load decreases, and the number of Pods is above the configured minimum, 
+the HorizontalPodAutoscaler instructs the workload resource (the Deployment, StatefulSet, or other similar resource) 
+to scale back down.
+
+Horizontal pod autoscaling does not apply to objects that can't be scaled 
+(for example: a DaemonSet.)
+
+The HorizontalPodAutoscaler is implemented as a Kubernetes API resource and a controller. 
+The resource determines the behavior of the controller. 
+The horizontal pod autoscaling controller, running within the Kubernetes control plane, 
+periodically adjusts the desired scale of its target (for example, a Deployment) 
+to match observed metrics such as average CPU utilization, average memory utilization, 
+or any other custom metric you specify.
+
+
+2. How does a HorizontalPodAutoscaler work? 
+HorizontalPodAutoscaler controls the scale of a Deployment and its ReplicaSet
+
+Kubernetes implements horizontal pod autoscaling as a control loop that runs 
+intermittently (it is not a continuous process). 
+The interval is set by the 
+--horizontal-pod-autoscaler-sync-period parameter to the kube-controller-manager 
+(and the default interval is 15 seconds).
+
+通常情况下，控制器将从一系列的聚合 API（metrics.k8s.io、custom.metrics.k8s.io 和 external.metrics.k8s.io）中获取度量值。 
+metrics.k8s.io API 通常由 Metrics 服务器（需要额外启动）提供。 
+可以从 metrics-server 获取更多信息。
+
+3. 算法细节 
+从最基本的角度来看，Pod 水平自动扩缩控制器根据当前指标和期望指标来计算扩缩比例。
+
+期望副本数 = ceil[当前副本数 * (当前指标 / 期望指标)]
+例如，当前度量值为 200m，目标设定值为 100m，那么由于 200.0/100.0 == 2.0， 副本数量将会翻倍。 
+如果当前指标为 50m，副本数量将会减半，因为50.0/100.0 == 0.5。 
+如果计算出的扩缩比例接近 1.0 （根据--horizontal-pod-autoscaler-tolerance 参数全局配置的容忍值，默认为 0.1），
+将会放弃本次扩缩。
+
+4. API对象
+HorizontalPodAutoscaler 是 Kubernetes autoscaling API 组的资源。 
+在当前稳定版本（autoscaling/v1）中只支持基于 CPU 指标的扩缩。
+
+API 的 beta 版本（autoscaling/v2beta2）引入了基于内存和自定义指标的扩缩。 
+在 autoscaling/v2beta2 版本中新引入的字段在 autoscaling/v1 版本中以注解的形式得以保留。
+
+
+5. kubectl 对 Horizontal Pod Autoscaler 的支持
+与其他 API 资源类似，kubectl 以标准方式支持 HPA。 
+我们可以通过 kubectl create 命令创建一个 HPA 对象， 通过 kubectl get hpa 命令来获取所有 HPA 对象， 
+通过 kubectl describe hpa 命令来查看 HPA 对象的详细信息。 
+最后，可以使用 kubectl delete hpa 命令删除对象。
+
+此外，还有个简便的命令 kubectl autoscale 来创建 HPA 对象。 
+例如，命令 kubectl autoscale rs foo --min=2 --max=5 --cpu-percent=80 
+将会为名 为 foo 的 ReplicationSet 创建一个 HPA 对象， 
+目标 CPU 使用率为 80%，副本数量配置为 2 到 5 之间。
+
+6. 滚动升级时扩缩 
+Kubernetes 允许你在 Deployment 上执行滚动更新。在这种情况下，Deployment 为你管理下层的 ReplicaSet。 
+当你为一个 Deployment 配置自动扩缩时，你要为每个 Deployment 绑定一个 HorizontalPodAutoscaler。 
+HorizontalPodAutoscaler 管理 Deployment 的 replicas 字段。 
+Deployment Controller 负责设置下层 ReplicaSet 的 replicas 字段， 以便确保在上线及后续过程副本个数合适。
+
+如果你对一个副本个数被自动扩缩的 StatefulSet 执行滚动更新， 该 StatefulSet 会直接管理它的 Pod 集合 （不存在类似 ReplicaSet 这样的中间资源）
+
+参考文档：
+https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/
+https://kubernetes.io/zh/docs/tasks/debug-application-cluster/resource-metrics-pipeline/#metrics-server
