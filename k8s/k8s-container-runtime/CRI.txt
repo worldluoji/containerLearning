@@ -1,8 +1,20 @@
-1. CRI 机制能够发挥作用的核心
+1. 什么是CRI?
+把 kubelet 对容器的操作，统一地抽象成一个接口。
+这样，kubelet 就只需要跟这个接口打交道了。
+而作为具体的容器项目，比如 Docker、 rkt、runV，它们就只需要自己提供一个该接口的实现，
+然后对 kubelet 暴露出 gRPC 服务即可。
+这一层统一的容器操作接口，就是 CRI 了。
+
+比如，容器项目是 Docker ，那么负责响应这个请求的就是一个叫作 dockershim 的组件。
+它会把 CRI 请求里的内容拿出来，然后组装成 Docker API 请求发给 Docker Daemon。
+需要注意的是，在 Kubernetes 目前的实现里，dockershim 依然是 kubelet 代码的一部分。
+当然，在将来，dockershim 肯定会被从 kubelet 里移出来，甚至直接被废弃掉。
+
+2. CRI 机制能够发挥作用的核心
 CRI 机制能够发挥作用的核心, 就在于每一种容器项目现在都可以自己实现一个 CRI shim，自行对 CRI 请求进行处理。
 这样，Kubernetes 就有了一个统一的容器抽象层，使得下层容器运行时可以自由地对接进入 Kubernetes 当中。
 
-2.举个例子。CNCF 里的 containerd 项目，就可以提供一个典型的 CRI shim 的能力，即：将 Kubernetes 发出的 CRI 请求，
+举个例子。CNCF 里的 containerd 项目，就可以提供一个典型的 CRI shim 的能力，即：将 Kubernetes 发出的 CRI 请求，
 转换成对 containerd 的调用，然后创建出 runC 容器。
 而 runC 项目，才是负责执行我们前面讲解过的设置容器 Namespace、Cgroups 和 chroot 等基础操作的组件。
 
