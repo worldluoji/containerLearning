@@ -39,6 +39,7 @@ CRI 机制能够发挥作用的核心, 就在于每一种容器项目现在都�
 6. 在具体的 CRI shim 中，这些接口（CRI Example.png）的实现是可以完全不同的。
 比如，如果是 Docker 项目，dockershim 就会创建出一个名叫 foo 的 Infra 容器（pause 容器），
 用来“hold”住整个 Pod 的 Network Namespace。
+Kubernetes 在启动 Infra 容器之后，就可以直接调用 CNI 网络插件，为这个 Infra 容器的 Network Namespace，配置符合预期的网络栈。
 (如果容器运行时是containerd, 通过crictl pod可以查看到Pod Sandbox对应的容器，包括pause容器；crictl ps则和docker ps一样)
 
 创建 Pod 时 Kubelet 先调用 CRI 接口 RuntimeService.RunPodSandbox 来创建一个沙箱环境，
