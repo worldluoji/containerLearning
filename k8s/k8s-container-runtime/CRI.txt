@@ -34,14 +34,29 @@ CRI 机制能够发挥作用的核心, 就在于每一种容器项目现在都�
 比如 HostName、DnsConfig、CgroupParent 等。
 所以说，PodSandbox 这个接口描述的，其实是 Kubernetes 将 Pod 这个概念映射到容器运行时层面所需要的字段，
 或者说是一个 Pod 对象子集。
+一个隔离的应用运行时环境叫容器，一组共同被 Pod 约束的容器就叫 Pod Sandbox。她们同生共死，共享底层资源。
 
 6. 在具体的 CRI shim 中，这些接口（CRI Example.png）的实现是可以完全不同的。
 比如，如果是 Docker 项目，dockershim 就会创建出一个名叫 foo 的 Infra 容器（pause 容器），
 用来“hold”住整个 Pod 的 Network Namespace。
-而如果是基于虚拟化技术的容器，比如 Kata Containers 项目，它的 CRI 实现就会直接创建出一个轻量级虚拟机来充当 Pod。
+(如果容器运行时是containerd, 通过crictl pod可以查看到Pod Sandbox对应的容器，包括pause容器；crictl ps则和docker ps一样)
+
+创建 Pod 时 Kubelet 先调用 CRI 接口 RuntimeService.RunPodSandbox 来创建一个沙箱环境，
+为 Pod 设置网络（例如：分配 IP）等基础运行环境。当 Pod 沙箱（Pod Sandbox）建立起来后，
+Kubelet 就可以在里面创建用户容器。当到删除 Pod 时，Kubelet 会先移除 Pod Sandbox 然后再停止里面的所有容器。
+
+Kubernetes 中所谓的 pause 容器有时候也称为 infra 容器（用C语言编写），它与用户容器捆绑运行在同一个 Pod 中，
+最大的作用是维护 Pod 网络协议栈。
+当然，也包括其他工作，比如清理僵尸进程：
+这个“暂停”容器运行一个非常简单的进程，它不执行任何功能，一启动就永远把自己阻塞住了（见 pause() 系统调用）。
+它执行另一个重要的功能——即它扮演 PID 1 的角色，并在子进程成为孤儿进程的时候通过调用 
+wait() 收割这些僵尸子进程。这样我们就不用担心我们的 Pod 的 PID namespace 里会堆满僵尸进程了。
+这也是为什么 Kubernetes 不随便找个容器（例如：Nginx）作为父容器，然后让用户容器加入的原因了。
+
+如果是基于虚拟化技术的容器，比如 Kata Containers 项目，它的 CRI 实现就会直接创建出一个轻量级虚拟机来充当 Pod。
 
 需要注意的是，在 RunPodSandbox 这个接口的实现中，你还需要调用 networkPlugin.SetUpPod(…) 来为这个 Sandbox 设置网络。
-这个 SetUpPod(…) 方法，实际上就在执行 CNI 插件里的 add(…) 方法，也就是我在前面为你讲解过的 CNI 插件为 Pod 创建网络，
+这个 SetUpPod(…) 方法，实际上就在执行 CNI 插件里的 add(…) 方法，也就是 CNI 插件为 Pod 创建网络，
 并且把 Infra 容器加入到网络中的操作。
 
 接下来，kubelet 继续调用 CreateContainer 和 StartContainer 接口来创建和启动容器 A、B。
