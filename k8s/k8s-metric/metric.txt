@@ -1,0 +1,136 @@
+1. Metrics Server
+Kubernetes 核心监控数据，其实使用的是 Kubernetes 的一个非常重要的扩展能力，叫作 Metrics Server。
+Metrics Server 并不是 kube-apiserver 的一部分，
+而是通过 Aggregator 这种插件机制，在独立部署的情况下同 kube-apiserver 一起统一对外服务的。
+
+当 Kubernetes 的 API Server 开启了 Aggregator 模式之后，你再访问 apis/metrics.k8s.io/v1beta1 的时候，
+实际上访问到的是一个叫作 kube-aggregator 的代理。而 kube-apiserver，正是这个代理的一个后端；
+而 Metrics Server，则是另一个后端。
+
+而且，在这个机制下，你还可以添加更多的后端给这个 kube-aggregator。
+所以 kube-aggregator 其实就是一个根据 URL 选择具体的 API 后端的代理服务器。
+通过这种方式，我们就可以很方便地扩展 Kubernetes 的 API 了。
+
+2. 开启kube-aggregator 部署 Metrics Server
+开启kube-aggregator:
+
+1) 如果你是使用 kubeadm 或者官方的 kube-up.sh 脚本部署 Kubernetes 集群的话，
+Aggregator 模式就是默认开启的；
+
+2) 如果是手动 DIY 搭建的话，你就需要在 kube-apiserver 的启动参数里加上如下所示的配置:
+--requestheader-client-ca-file=<path to aggregator CA cert>
+--requestheader-allowed-names=front-proxy-client
+--requestheader-extra-headers-prefix=X-Remote-Extra-
+--requestheader-group-headers=X-Remote-Group
+--requestheader-username-headers=X-Remote-User
+--proxy-client-cert-file=<path to aggregator proxy cert>
+--proxy-client-key-file=<path to aggregator proxy key>
+
+这些配置的作用，主要就是为 Aggregator 这一层设置对应的 Key 和 Cert 文件。
+而这些文件的生成，就需要你自己手动完成了，具体流程请参考:
+https://github.com/kubernetes-sigs/apiserver-builder-alpha/blob/master/docs/concepts/auth.md
+
+
+Aggregator 功能开启之后，你只需要将 Metrics Server 的 YAML 文件部署起来:
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+查看监控是否起来：
+kubectl -n kube-system get pods -l k8s-app=metrics-server 
+这时候可能会因为网络原因报错：
+Failed to pull image "k8s.gcr.io/metrics-server/metrics-server:v0.6.1": 
+rpc error: code = Unknown desc = Error response from daemon: 
+Get "https://k8s.gcr.io/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)
+
+这个错误是k8s.gcr.io已经废弃无法访问，需要替换成在国内的镜像，可以使用阿里云的：
+k8s.gcr.io/metrics-server/metrics-server:v0.6.1
+替换为
+registry.cn-hangzhou.aliyuncs.com/google_containers/metrics-server:v0.6.1
+
+重新apply后，查看pod running状态，但是没有ready,再次查看原因：
+Readiness probe failed: HTTP probe failed with statuscode: 500
+进一步查看log:
+kubectl logs metrics-server-6ffc8966f5-zcm7p -n kube-system
+
+"E0330 07:29:37.039704       1 scraper.go:140] "Failed to scrape node" err="Get \"https://192.168.49.2:10250/metrics/resource\": x509: cannot validate certificate for 192.168.49.2 because it doesn't contain any IP SANs" node="minikube""
+这是证书配置的问题，测试环境可以禁用证书： - --kubelet-insecure-tls
+
+...
+template:
+    metadata:
+      labels:
+        k8s-app: metrics-server
+    spec:
+      containers:
+      - args:
+        - --cert-dir=/tmp
+        - --secure-port=443
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-use-node-status-port
+        - --metric-resolution=15s
+        - --kubelet-insecure-tls
+        image: k8s.gcr.io/metrics-server/metrics-server:v0.5.0
+        imagePullPolicy: IfNotPresent
+...
+
+重新apply后：
+[minikuber@kube-master metrics]$ kubectl -n kube-system get pods -l k8s-app=metrics-server 
+NAME                             READY   STATUS    RESTARTS   AGE
+metrics-server-fd9598766-w2klv   1/1     Running   0          45s
+
+[minikuber@kube-master metrics]$ kubectl top node
+NAME       CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+minikube   98m          4%     1031Mi          27%
+
+
+参考：https://github.com/kubernetes-incubator/metrics-server
+https://blog.csdn.net/liuyanwuyu/article/details/119793631
+
+Metrics Server 启动之后，用户就可以通过标准的 Kubernetes API 来访问到监控数据了:
+可以通过 kubectl proxy 来访问 Metrics API：
+
+http://127.0.0.1:8001/apis/metrics.k8s.io/v1beta1/nodes
+http://127.0.0.1:8001/apis/metrics.k8s.io/v1beta1/nodes/<node-name>
+http://127.0.0.1:8001/apis/metrics.k8s.io/v1beta1/pods
+http://127.0.0.1:8001/apis/metrics.k8s.io/v1beta1/namespace/<namespace-name>/pods/<pod-name>
+
+也可以直接通过 kubectl 命令来访问这些 API，比如：
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes/<node-name>
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/namespace/<namespace-name>/pods/<pod-name>
+
+当你访问这个 Metrics API 时，它就会为你返回一个 Pod 的监控数据，而这些数据，
+其实是从 kubelet 的 Summary API （即 <kubelet_ip>:<kubelet_port>/stats/summary）采集而来的。
+Summary API 返回的信息，既包括了 cAdVisor 的监控数据，也包括了 kubelet 本身汇总的信息
+
+
+查看metric server有没有起来：
+[minikuber@kube-master k8s]$ kubectl api-resources | grep metrics
+nodes                                          metrics.k8s.io/v1beta1                 false        NodeMetrics
+pods                                           metrics.k8s.io/v1beta1                 true         PodMetrics
+
+例如：
+通过kubectl proxy 命令暴露api 端口：
+kubectl proxy -p 8001
+
+另起一个窗口：
+[root@kube-master ~]# curl 127.0.0.1:8001/ | grep metrics
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  5628    0  5628    0     0   601k      0 --:--:-- --:--:--    "/apis/metrics.k8s.io",
+ --:    "/apis/metrics.k8s.io/v1beta1",
+--:--  687k
+    "/metrics",
+
+
+3. minikube
+minkube可以安装上述的Metrics Server 
+minikube也可直接启动自带的Metrics Server
+minikube addons list 查看支持的可开启的功能，可找到metrics-server
+开启Metrics Server:
+minikube addons enable metrics-server 
+停止Metrics Server
+minikube addons disable metrics-server
+
+metrics-server 指标少，但是更轻量，适用于简单场景的容器与节点数据监控。
+生产上一般使用prometheus ，其能力更强，也更重，拥有更多的监控指标以及自定义监控指标，
+可以配合grafana 面板更好的展示数据，配合alertmanager 实现告警。
