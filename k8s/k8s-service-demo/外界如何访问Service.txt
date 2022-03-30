@@ -113,3 +113,13 @@ spec:
 
  在上述Service中，为它指定的externalIPs=80.11.12.10，就可以通过访问80.11.12.10:80访问到被代理的Pod。
  不过，在这里 Kubernetes 要求 externalIPs 必须是至少能够路由到一个 Kubernetes 的节点。
+
+
+一个注意点：
+如果使用minikube，则通过下面的命令获取url访问Service
+[minikuber@kube-master nginx]$ minikube service nginx-node-port --url
+http://192.168.49.2:30080
+http://192.168.49.2:30088
+
+kubernates nginx 403解决方案：
+https://www.5axxw.com/questions/content/7a5dwx
