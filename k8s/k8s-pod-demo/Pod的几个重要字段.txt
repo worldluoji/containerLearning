@@ -197,6 +197,7 @@ spec:
 这里，
 POD启动之前，会先执行shell把字符串写入到/usr/share/message；
 POD被delete时，会先执行nginx的quit命令，优雅的退出，再执行SIGTERM和SIGKILL。
+(如果SIGTERM 30秒（默认）没能优雅退出，则会执行SIGKILL直接杀死)
 
 11. startupProbe
 Sometimes, you have to deal with legacy applications that might require an additional 
