@@ -1,0 +1,104 @@
+1. custom metric
+借助Prometheus监控体系，Kubernetes 就可以为你提供一种非常有用的能力，
+那就是 Custom Metrics，自定义监控指标。
+
+其实传统 PaaS 项目, 有一种叫作 Auto Scaling，即自动水平扩展的功能。
+不过，这个功能往往只能依据某种指定的资源类型执行水平扩展，比如 CPU 或者 Memory 的使用值。
+
+而在真实的场景中，用户需要进行 Auto Scaling 的依据往往是自定义的监控指标。
+比如，某个应用的等待队列的长度，或者某种应用相关资源的使用情况。
+这些复杂多变的需求，在传统 PaaS 项目和其他容器编排项目里，几乎是不可能轻松支持的。
+
+而凭借强大的 API 扩展机制，Custom Metrics 已经成为了 Kubernetes 的一项标准能力。
+并且，Kubernetes 的自动扩展器组件 Horizontal Pod Autoscaler （HPA）， 
+也可以直接使用 Custom Metrics 来执行用户指定的扩展策略，这里的整个过程都是非常灵活和可定制的。
+
+比如，我们可以实现一个根据指定 Pod 收到的 HTTP 请求数量来进行 Auto Scaling 的 Custom Metrics。
+这里具体的做法有很多种，最普遍的做法，就是让 Pod 里的应用本身暴露出一个 /metrics API，
+然后在这个 API 里返回自己收到的 HTTP 的请求的数量。
+所以说，接下来 HPA 只需要定时访问前面提到的自定义监控 URL，
+然后根据这些值计算是否要执行 Scaling 即可。
+
+Kubernetes 里的 Custom Metrics 机制，也是借助 Aggregator APIServer 扩展机制来实现的。
+这里的具体原理是，当你把 Custom Metrics APIServer 启动之后，
+Kubernetes 里就会出现一个叫作custom.metrics.k8s.io的 API。而当你访问这个 URL 时，
+Aggregator 就会把你的请求转发给 Custom Metrics APIServer 。
+而 Custom Metrics APIServer 的实现，其实就是一个 Prometheus 项目的 Adaptor.
+
+2. 实战
+首先，部署 Prometheus 项目。这一步，使用 Prometheus Operator 来完成。
+kubectl apply -f demos/monitoring/prometheus-operator.yaml
+kubectl apply -f demos/monitoring/sample-prometheus-instance.yaml
+
+第二步，我们需要把 Custom Metrics APIServer 部署起来。
+kubectl apply -f demos/monitoring/custom-metrics.yaml
+
+第三步，我们需要为 Custom Metrics APIServer 创建对应的 ClusterRoleBinding，
+以便能够使用 curl 来直接访问 Custom Metrics 的 API，比如：
+$ kubectl create clusterrolebinding allowall-cm --clusterrole custom-metrics-server-resources --user system:anonymous
+clusterrolebinding "allowall-cm" created
+
+第四步，把待监控的应用和 HPA 部署起来
+kubectl apply -f demos/monitoring/sample-metrics-app.yaml
+
+HPA 的配置，就是设置 Auto Scaling 规则的地方：
+kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2beta1
+metadata:
+  name: sample-metrics-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sample-metrics-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Object
+    object:
+      target:
+        kind: Service
+        name: sample-metrics-app
+      metricName: http_requests
+      targetValue: 100
+
+scaleTargetRef 字段，就指定了被监控的对象是名叫 sample-metrics-app 的 Deployment，
+也就是我们上面部署的被监控应用。并且，它最小的实例数目是 2，最大是 10。
+在 metrics 字段，我们指定了这个 HPA 进行 Scale 的依据，是名叫 http_requests 的 Metrics。
+而获取这个 Metrics 的途径，则是访问名叫 sample-metrics-app 的 Service。
+
+HPA 就可以向如下所示的 URL 发起请求来获取 Custom Metrics 的值了：
+https://<apiserver_ip>/apis/custom-metrics.metrics.k8s.io/v1beta1/namespaces/default/services/sample-metrics-app/http_requests
+
+上述这个 URL 对应的被监控对象，是我们的应用对应的 Service。
+对于一个多实例应用来说，通过 Service 来采集 Pod 的 Custom Metrics 其实才是合理的做法。
+
+sample-metrics-app pod, 通过/metric接口返回 http_requests_total 的值。
+这，也就是 Prometheus 收集到的值。
+Custom Metrics APIServer 在收到对 http_requests 指标的访问请求之后，
+它会从 Prometheus 里查询 http_requests_total 的值，然后把它折算成一个以时间为单位的请求率，
+最后把这个结果作为 http_requests 指标对应的值返回回去，
+这个值则被 HPA 拿来使用的。
+
+Prometheus 项目，又是如何知道采集哪些 Pod 的 /metrics API 作为监控指标的来源呢？
+会看到有一个类型是 ServiceMonitor 的对象也被创建了出来：
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sample-metrics-app
+  labels:
+    service-monitor: sample-metrics-app
+spec:
+  selector:
+    matchLabels:
+      app: sample-metrics-app
+  endpoints:
+  - port: web
+
+这个 ServiceMonitor 对象，正是 Prometheus Operator 项目用来指定被监控 Pod 的一个配置文件。
+可以看到，我其实是通过 Label Selector 为 Prometheus 来指定被监控应用的。
+
+参考资料：
+项目地址：https://github.com/worldluoji/kubeadm-workshop/tree/master/demos/monitoring
+极客时间：https://time.geekbang.org/column/article/72693
