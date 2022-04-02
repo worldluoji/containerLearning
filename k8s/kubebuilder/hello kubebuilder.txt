@@ -1,0 +1,90 @@
+使用kubebuilder构建一个Controller
+
+1. 创建项目
+mkdir -p $GOPATH/src/helloworld
+cd $GOPATH/src/helloworld
+kubebuilder init --domain com.hello
+--domain string            domain for groups (default "my.domain")
+还有很多参数，可以kubebuilder --help查看
+这里如果使用go moudule,则不必在 $GOPATH 下进行
+
+2. 创建API(CRD和Controller)
+cd $GOPATH/src/helloworld
+kubebuilder create api \
+--group webapp \
+--version v1 \
+--kind Guestbook
+
+控制台会提醒是否创建资源(Create Resource [y/n])，输入y；
+接下来控制台会提醒是否创建控制器(Create Controller [y/n])，输入y；
+kubebuilder会根据上述命令新增多个文件。
+
+3. 构建和部署CRD
+cd $GOPATH/src/helloworld
+make install
+
+4. 编译和运行controller
+kubebuilder自动生成的controller源码地址是：
+$GOPATH/src/helloworld/controllers/guestbook_controller.go 
+我们只需要修改里面的 Reconcile 方法，
+这其实也就是核心业务逻辑所在之处，把实际状态调谐为期望状态的核心部分。
+由于是hello项目，这里仅添加打印即可：
+fmt.Println("hello kubebuilder")
+
+执行以下命令，会编译并启动刚才修改的controller：
+cd $GOPATH/src/helloworld
+make run
+
+
+5. 创建Guestbook资源的实例
+现在kubernetes已经部署了Guestbook类型的CRD，而且对应的controller也已正在运行中，
+可以尝试创建Guestbook类型的实例（CR）了(相当于有了pod的定义后，才可以创建pod)；
+kubebuilder已经自动创建了一个类型的部署文件：
+$GOPATH/src/helloworld/config/samples/webapp_v1_guestbook.yaml ，
+cd $GOPATH/src/helloworld
+kubectl apply -f config/samples/
+
+6. 删除实例并停止controller
+不再需要Guestbook实例的时候，执行以下命令即可删除：
+cd $GOPATH/src/helloworld
+kubectl delete -f config/samples/
+
+
+7. 将controller制作成docker镜像
+至此，已经体验过了kubebuilder的基本功能，不过实际生产环境中controller一般都会运行在kubernetes环境内，
+像上面这种运行在kubernetes之外的方式就不合适了，咱们来试试将其做成docker镜像然后在kubernetes环境运行；
+这里有个要求，就是您要有个kubernetes可以访问的镜像仓库，例如局域网内的Harbor，或者公共的hub.docker.com，
+我这为了操作方便选择了hub.docker.com，使用它的前提是拥有hub.docker.com的注册帐号；
+在kubebuilder电脑上，打开一个控制台，执行docker login命令登录，根据提示输入hub.docker.com的帐号和密码，
+这样就可以在当前控制台上执行docker push命令将镜像推送到hub.docker.com上了；
+执行以下命令构建docker镜像并推送到hub.docker.com，镜像名为hello/guestbook:001：
+
+cd $GOPATH/src/helloworld
+make docker-build docker-push IMG=hello/guestbook:002
+
+push成功后，去hub.docker.com网站看看，新镜像已经上传，
+这样只要任何机器只要能上网就能pull此镜像到本地使用了。
+
+镜像准备好之后，执行以下命令即可在kubernetes环境部署controller：
+cd $GOPATH/src/helloworld
+make deploy IMG=hello/guestbook:001
+
+控制台会提示各类资源被创建（rbac居多）,此时去看kubernetes环境的pod，发现确实已经新增了controller
+这个pod实际上有两个容器，用kubectl describe命令细看，分别是kube-rbac-proxy和manager.
+
+由于有两个容器，那么查看日志时就要指定其中一个了，咱们的controller对应的是manager容器，
+因此查看日志的命令是:
+kubectl logs -f \
+helloworld-controller-manager-689d4b6f5b-h9pzg \
+-n helloworld-system \
+-c manager
+
+再次创建Guestbook资源的实例，依旧是kubectl apply -f config/samples/命令，
+再去看manager容器的日志，可见咱们修改的内容已经打印出来了。
+
+8. 清理
+体验完毕后，如果想把前面创建的资源和CRD全部清理掉，可以执行以下命令：
+cd $GOPATH/src/helloworld
+make uninstall
+
+参考资料：https://xinchen.blog.csdn.net/article/details/113089414
