@@ -60,7 +60,7 @@ kubectl delete -f config/samples/
 执行以下命令构建docker镜像并推送到hub.docker.com，镜像名为hello/guestbook:001：
 
 cd $GOPATH/src/helloworld
-make docker-build docker-push IMG=hello/guestbook:002
+make docker-build docker-push IMG=hello/guestbook:001
 
 push成功后，去hub.docker.com网站看看，新镜像已经上传，
 这样只要任何机器只要能上网就能pull此镜像到本地使用了。
@@ -86,5 +86,140 @@ helloworld-controller-manager-689d4b6f5b-h9pzg \
 体验完毕后，如果想把前面创建的资源和CRD全部清理掉，可以执行以下命令：
 cd $GOPATH/src/helloworld
 make uninstall
+
+9. 目录说明
+[minikuber@kube-master helloworld]$ tree -L 2
+.
+|-- api
+|   `-- v1
+|-- bin
+|   |-- controller-gen
+|   `-- kustomize
+|-- config
+|   |-- crd
+|   |-- default
+|   |-- manager
+|   |-- prometheus
+|   |-- rbac
+|   `-- samples
+|-- controllers
+|   |-- guestbook_controller.go
+|   `-- suite_test.go
+|-- Dockerfile
+|-- go.mod
+|-- go.sum
+|-- hack
+|   `-- boilerplate.go.txt
+|-- main.go
+|-- Makefile
+`-- PROJECT
+
+1）工程新建完成后，会新增不少文件和目录，以下几个是官方提到的基础设施：
+go.mod：module的配置文件，里面已经填充了几个重要依赖；
+Makefile：非常重要的工具，前文咱们也用过了，编译构建、部署、运行都会用到；
+PROJECT：kubebuilder工程的元数据，在生成各种API的时候会用到这里面的信息；
+config/default：基于kustomize制作的配置文件，为controller提供标准配置，也可以按需要去修改调整；
+config/manager：一些和manager有关的细节配置，例如镜像的资源限制；
+config/rbac：顾名思义，如果像限制operator在kubernetes中的操作权限，就要通过rbac来做精细的权限配置了，这里面就是权限配置的细节；
+
+2）main.go是kubebuilder自动生成的代码，这是operator的启动代码，大多数场景无需改动。
+
+3）API是operator的核心，当您决定使用operator时，就应该从真实需求出发，开始设计整个CRD，
+而这些设计最终体现在CRD的数据结构，以及对真实值和期望值的处理逻辑中。
+
+[minikuber@kube-master v1]$ cat guestbook_types.go 
+
+....
+// GuestbookSpec defines the desired state of Guestbook
+type GuestbookSpec struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+
+	// Foo is an example field of Guestbook. Edit guestbook_types.go to remove/update
+	Foo string `json:"foo,omitempty"`
+}
+
+// GuestbookStatus defines the observed state of Guestbook
+type GuestbookStatus struct {
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+}
+
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
+
+// Guestbook is the Schema for the guestbooks API
+type Guestbook struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   GuestbookSpec   `json:"spec,omitempty"`
+	Status GuestbookStatus `json:"status,omitempty"`
+}
+
+//+kubebuilder:object:root=true
+
+// GuestbookList contains a list of Guestbook
+type GuestbookList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Guestbook `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&Guestbook{}, &GuestbookList{})
+}
+
+metav1.TypeMeta：保存了资源的Group、Version、Kind
+metav1.ObjectMeta：保存了资源对象的名称和namespace
+Spec：期望状态，例如deployment在创建时指定了pod有三个副本，或者你自定义的参数等。
+Status：真实状态，例如deployment在创建后只有一个副本(其他的还没有创建成功)，大多数资源对象都有此字段，
+不过ConfigMap是个例外（想想也是，配置信息嘛，配成啥就是啥，没有什么期望值和真实值的说法）；
+还有一个数据结构，就是Guestbook对应的列表GuestbookList，就是单个资源对象的集合；
+guestbook_types.go所在目录下还有两个文件：groupversion_info.go定义了Group和Version，
+以及注册到scheme时用到的实例SchemeBuilder，zz_generated.deepcopy.go用于实现实例的深拷贝.
+
+4）controller是业务核心
+Status(真实状态)是个数据结构，其字段是业务定义的，其字段值也是业务代码执行自定义的逻辑算出来的；
+业务核心的目标，是确保Status与Spec达成一致，例如deployment指定了pod的副本数为3，
+如果真实的pod没有三个，deployment的controller代码就去创建pod，如果真实的pod超过了三个，
+deployment的controller代码就去删除pod;
+以上就是咱们的controller要做的事情，接下来看看代码的细节，kubebuilder创建的guestbook_controller.go
+就是controller，咱们的业务代码都写在这个文件中。
+数据结构定义，操作资源对象时用到的客户端工具client.Client、日志工具、Kind和数据结构的关系Scheme，
+这些都帮我们准备好了。
+
+Reconcile方法前面有一些+kubebuilder:rbac前缀的注释，这些是用来确保controller在运行时有对应的资源操作权限。
+
+//+kubebuilder:rbac:groups=webapp.com.hello,resources=guestbooks,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=webapp.com.hello,resources=guestbooks/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=webapp.com.hello,resources=guestbooks/finalizers,verbs=update
+         
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// TODO(user): Modify the Reconcile function to compare the state specified by
+// the Guestbook object against the actual cluster state, and then
+// perform operations to make the cluster state reflect the state specified by
+// the user.
+//  
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
+func (r *GuestbookReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+        _ = log.FromContext(ctx)
+    
+        // TODO(user): your logic here
+        fmt.Println(fmt.Sprintf("1.%v", req))
+        fmt.Println(fmt.Sprintf("2.%s", debug.Stack()))
+        return ctrl.Result{}, nil
+}
+
+
+guestbook_controller.go是operator的业务核心，而controller的核心是其Reconcile方法，
+将来咱们的大部分代码都是写在这里面的，主要做的事情就是获取status，然后让status和spec达成一致；
+关于status，官方的一段描述值得重视，如下图红框，主要是说资源对象的状态应该是每次重新计算出来的，
+这里以deployment为例，想知道当前有多少个pod，有两种方法：
+第一种准备个字段记录，每次对pod的增加和删除都修改这个字段，于是读这个字段就知道pod数量了，
+第二种方法是每次用client工具去实时查询pod数量，目前官方明确推荐使用第二种方法。
+
 
 参考资料：https://xinchen.blog.csdn.net/article/details/113089414
