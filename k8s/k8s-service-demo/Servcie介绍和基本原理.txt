@@ -143,6 +143,14 @@ kube-proxy 通过 iptables 处理 Service 的过程，其实需要在宿主机�
 所以，在大规模集群里，非常建议你为 kube-proxy 设置–proxy-mode=ipvs 来开启这个功能。
 它为 Kubernetes 集群规模带来的提升，还是非常巨大的。
 
+此外，ipvs为负载均衡算法提供了更多的选项，例如：
+rr：轮询调度
+lc：最小连接数
+dh：目标哈希
+sh：源哈希
+sed：最短期望延迟
+nq： 不排队调度
+
 6. publishNotReadyAddresses
 Service有一个属性叫做publishNotReadyAddresses，默认为false,一般不建议开启。
 开启则意味着，没有就绪的pod也会出现在endpoint列表里。
@@ -157,3 +165,34 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
+
+7. sessionAffinity
+Service同样也支持Session affinity（粘性会话）机制，
+可以将来自同一个客户端的请求始终转发至同一个后端的Pod对象，
+
+Service affinity的效果仅仅在一段时间内生效，默认值为10800秒，超出时长，客户端再次访问会重新调度。
+该机制仅能基于客户端IP地址识别客户端身份，
+它会将经由同一个NAT服务器进行原地址转换的所有客户端识别为同一个客户端，
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: default
+spec:
+  selector:
+    app: myapp
+    release: canary
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 #默认的过期时间是10800秒，到期后POD从新路由
+  type: NodePort
+  ports: 
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+
+Service的sessionAffinity为 ClientIP. 这样同一个client的请求会被kube-proxy转发到同一个Pod。 
+sessionAffinity 默认是None，客户端的请求被kube-proxy按照RR或Random算法转发到service的pod set，
+不能保证每次发到同一个Pod。
