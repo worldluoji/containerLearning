@@ -65,6 +65,7 @@ busybox-1.default-subdomain.default.svc.cluster.local 解析到这个 Pod 的 IP
 3. 访问一个Service, 能够被负载均衡选中的POD就叫做endpoint, 可以通过kubectl get ep查看。
 需要注意的是，只有处于Running状态并且通过readinessProbe检查的Pod,才会出现在endpoint列表里面。
 而当一个POD出现问题时也会被Servcie所移除。
+endpoint就像一张中间表，记录了service和pod的映射关系，而service和pod正是多对多的关系。
 
 查看Service命令
 $ kubectl get svc hostnames
@@ -124,6 +125,7 @@ Service由kube-proxy组件，加上iptables来共同实现
 
 这样，访问 Service VIP 的 IP 包经过上述 iptables 处理之后，就已经变成了访问具体某一个后端 Pod 的 IP 包了。
 不难理解，这些 Endpoints 对应的 iptables 规则，正是 kube-proxy 通过监听 Pod 的变化事件，在宿主机上生成并维护的。
+Service的NodePort模式，不过是比ClusterIP模式，多了一条iptables规则而已，即多了一个node到Service的映射。
 
 5. IPVS模式
 kube-proxy 通过 iptables 处理 Service 的过程，其实需要在宿主机上设置相当多的 iptables 规则。
