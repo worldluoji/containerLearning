@@ -142,3 +142,18 @@ kube-proxy 通过 iptables 处理 Service 的过程，其实需要在宿主机�
 
 所以，在大规模集群里，非常建议你为 kube-proxy 设置–proxy-mode=ipvs 来开启这个功能。
 它为 Kubernetes 集群规模带来的提升，还是非常巨大的。
+
+6. publishNotReadyAddresses
+Service有一个属性叫做publishNotReadyAddresses，默认为false,一般不建议开启。
+开启则意味着，没有就绪的pod也会出现在endpoint列表里。
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-k8s
+spec:
+  selector:
+    app: spring-k8s
+  publishNotReadyAddresses: true
+  ports:
+    - port: 80
+      targetPort: 8080
