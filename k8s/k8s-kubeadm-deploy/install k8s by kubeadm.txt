@@ -123,6 +123,15 @@ systemctl disable firewalld
 Dockershim removal set for Kubernetes 1.24
 https://kubernetes.io/releases/version-skew-policy/
 
+
+成功安装后，kubectl get node报错：
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+
+解决方法：执行以下命令
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
 8. Node节点加入
 还是要做前面的前置工作，并且安装kubelet、kubeadm、kubectl, 最后使用kubeadm join命令加入，
 在master节点kubeadm init时会提示：
