@@ -160,6 +160,7 @@ $ docker image inspect ubuntu:latest
 
 5. 容器对进程数量的限制
 在一个容器建立之后，创建容器的服务会在 /sys/fs/cgroup/pids 下建立一个子目录，就是一个控制组，控制组里最关键的一个文件就是 pids.max。我们可以向这个文件写入数值，而这个值就是这个容器中允许的最大进程数目。
+里面还有个pids.current，表示当前cgroup及其所有子孙cgroup中现有的总的进程数量。
 
 6. 容器中init进程退出
 在 init 进程退出之后，容器内的其他进程也都立刻退出了。不过不同的是，init 进程收到的是 SIGTERM 信号，而其他进程收到的是 SIGKILL 信号。
