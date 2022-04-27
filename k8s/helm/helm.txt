@@ -1,0 +1,53 @@
+1. Install
+
+第一步，下载：
+https://github.com/helm/helm/releases
+
+
+第二步，解压
+tart -xvf  xxx.tar
+
+第三步 移动
+mv <your_download_binary> /usr/local/bin/helm
+
+
+2. Intrduction
+Helm 是 Kubernetes 的包管理器.
+包管理器类似于我们在 Ubuntu 中使用的apt、Centos中使用的yum 或者Python中的 pip 一样，
+能快速查找、下载和安装软件包。Helm 由客户端组件 helm 和服务端组件 Tiller 组成, 
+能够将一组K8S资源打包统一管理, 是查找、共享和使用为Kubernetes构建的软件的最佳方式。
+
+Helm解决了什么痛点？
+在 Kubernetes中部署一个可以使用的应用，需要涉及到很多的 Kubernetes 资源的共同协作。
+比如你安装一个 WordPress 博客，用到了一些 Kubernetes (下面全部简称k8s)的一些资源对象，
+包括 Deployment 用于部署应用、Service 提供服务发现、Secret 配置 WordPress 的用户名和密码，
+可能还需要 pv 和 pvc 来提供持久化服务。并且 WordPress 数据是存储在mariadb里面的
+，所以需要 mariadb 启动就绪后才能启动 WordPress。这些 k8s 资源过于分散，不方便进行管理。
+
+
+3. 复用已有的Helm release
+1) 操作helm release repo
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm repo list
+helm search repo grafana
+
+2) 从remote repo安装helm chart
+helm upgrade --install loki grafana/loki-stack
+
+3) 本地安装helm chart
+helm pull grafana/loki-stack
+helm upgrade --install loki ./loki-stack
+
+4. 开发自己的helm chart
+
+[root@kube-master first-helm-char]# helm create myapp
+Creating myapp
+[root@kube-master first-helm-char]# cd myapp
+[root@kube-master myapp]# ls
+charts  Chart.yaml  templates  values.yaml
+
+Chart.yaml 包含了chart信息的yaml文件
+values.yaml chart默认配置
+charts/ 包含chart依赖的其它chart
+templates/ 模板目录，和values.yaml结合时，可生成kubernates的manifest文件。
