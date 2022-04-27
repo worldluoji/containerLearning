@@ -18,14 +18,14 @@ kubeadm init --config master-init.yaml
 或
 
 kubeadm init \
-  --apiserver-advertise-address=172.17.0.2 \
+  --apiserver-advertise-address=192.168.137.246 \
   --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers \
   --kubernetes-version v1.23.3 \
   --service-cidr=10.92.0.0/12 \
   --pod-network-cidr=10.220.0.0/16 \
 
 kubeadm init \
-  --apiserver-advertise-address=172.17.0.2 \
+  --apiserver-advertise-address=192.168.137.246 \
   --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers \
   --kubernetes-version v1.23.3 \
   --pod-network-cidr=10.244.0.0/16 \
@@ -135,8 +135,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 8. Node节点加入
 还是要做前面的前置工作，并且安装kubelet、kubeadm、kubectl, 最后使用kubeadm join命令加入，
 在master节点kubeadm init时会提示：
-kubeadm join 192.168.136.246:6443 --token y2n360.ky4kmzjj6fur9owt \
-	--discovery-token-ca-cert-hash sha256:98387ea3e130736042e1efe3f6419a4fb96c1322209275323bbdcb5f1cf2f59d 
+kubeadm join 192.168.137.246:6443 --token y2n360.ky4kmzjj6fur9owt --discovery-token-ca-cert-hash sha256:98387ea3e130736042e1efe3f6419a4fb96c1322209275323bbdcb5f1cf2f59d 
 
 成功后显示：
 This node has joined the cluster:
@@ -144,3 +143,55 @@ This node has joined the cluster:
 * The Kubelet was informed of the new secure connection details.
 
 Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+
+
+问题：
+完成后，发现节点均是NotReady状态
+[root@localhost .kube]# kubectl get node
+NAME          STATUS     ROLES                  AGE   VERSION
+kube-master   NotReady   control-plane,master   12m   v1.23.3
+kube-node1    NotReady   <none>                 11m   v1.23.3
+
+查看master节点
+kubectl describe node kube-master
+可以看到
+'''
+KubeletNotReady        container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
+'''
+
+原因是没有安装网络插件。
+
+可以看到coredns相关的POD处于pending状态
+[root@localhost .kube]# kubectl get pod -n kube-system
+NAME                                  READY   STATUS    RESTARTS   AGE
+coredns-65c54cc984-vffwt              0/1     Pending   0          16m
+coredns-65c54cc984-znw72              0/1     Pending   0          16m
+
+这时候我们就要安装网络插件：
+https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/troubleshooting-kubeadm/
+-> https://kubernetes.io/zh/docs/concepts/cluster-administration/addons/
+
+For Kubernetes v1.17+ kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+如遇网络问题，可以先
+wget https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+把yml文件下载下来，
+然后修改镜像源。
+或者，切换到国内阿里云镜像源，手动docker pull对应的镜像。
+
+安装完网络插件后，可以看到节点已经起来了：
+[root@localhost k8s]# kubectl get node
+NAME          STATUS   ROLES                  AGE   VERSION
+kube-master   Ready    control-plane,master   67m   v1.23.3
+kube-node1    Ready    <none>                 66m   v1.23.3
+
+
+我们又发现node1是role是<none>,
+ROLES列显示的是<none>，那就表示当前节点没有kubernetes.io/role标签。
+我们可以通过"kubectl label"命令操作ROLES列的值。
+kubectl label node kube-node1 kubernetes.io/role=node1
+
+[root@localhost k8s]# kubectl get node
+NAME          STATUS   ROLES                  AGE   VERSION
+kube-master   Ready    control-plane,master   70m   v1.23.3
+kube-node1    Ready    node1                  70m   v1.23.3
