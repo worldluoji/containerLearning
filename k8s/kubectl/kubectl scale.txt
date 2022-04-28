@@ -1,0 +1,3 @@
+
+手动扩容，将pod数量改为3个
+kubectl scale deploy <your_deployment> --replicas=3
