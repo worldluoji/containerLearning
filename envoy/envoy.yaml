@@ -20,10 +20,14 @@ static_resources:
                     - name: local_service
                       domains: ["*"]
                       routes:
-                        - match: { prefix: "/" }
-                          route: { cluster: some_service } #任意路径，访问some_service
+                        - match:
+                            prefix: "/"
+                          route: 
+                            cluster: some_service
                 http_filters:
                   - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
     - name: some_service
       connect_timeout: 0.25s

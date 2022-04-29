@@ -271,3 +271,7 @@ resources:
           socket_address:
             address: 127.0.0.2
             port_value: 1234
+
+
+官网参考文档地址：
+https://www.envoyproxy.io/docs/envoy/latest/start/quick-start/configuration-static#clusters
