@@ -1,0 +1,273 @@
+1. Envoy 是什么?
+Envoy is an L7 proxy and communication bus designed for large modern service oriented architectures. 
+The project was born out of the belief that:
+"The network should be transparent to applications. 
+When network and application problems do occur 
+it should be easy to determine the source of the problem."
+
+2. Envoy 的核心功能/卖点
+1) 非侵入的架构：Envoy 是和应用服务并行运行的，透明地代理应用服务发出/接收的流量。
+应用服务只需要和 Envoy 通信，无需知道其他微服务应用在哪里。
+2) 基于 Modern C++11实现，性能优异。
+3) L3/L4 过滤器架构：Envoy 的核心是一个 L3/L4 代理，然后通过插件式的过滤器(network filters)链条来执行 TCP/UDP 的相关任务，例如 TCP 转发，TLS 认证等工作。
+4) HTTP L7 过滤器架构：HTTP在现代应用体系里是地位非常特殊的应用层协议，所以 Envoy 内置了一个非常核心的过滤器: http_connection_manager。http_connection_manager 本身是如此特殊和复杂，支持丰富的配置，以及本身也是过滤器架构，可以通过一系列 http 过滤器(http filters)来实现 http协议层面的任务，例如：http路由，重定向，CORS支持等等。
+5) HTTP/2 作为第一公民：Envoy 支持 HTTP/1.1 和 HTTP/2，推荐使用 HTTP/2。
+6) gRPC 支持：因为对 HTTP/2 的良好支持，Envoy 可以方便的支持 gRPC，特别是在负载和代理上。
+7) 服务发现： 支持包括 DNS, EDS 在内的多种服务发现方案。
+8) 健康检查：内置健康检查子系统。
+9) 高级的负载均衡方案：除了一般的负载均衡，Envoy 还支持基于 rate limit 服务的多种高级负载均衡方案，包括： automatic retries, circuit breaking, global rate limiting
+10) Tracing：方便集成 Open Tracing 系统，追踪请求
+11) 统计与监控：内置 stats 模块，方便集成诸如 prometheus/statsd 等监控方案
+12) 动态配置：通过“动态配置API”实现配置的动态调整，而无需重启 Envoy 服务的。
+
+
+3. 核心术语解释
+Host
+这里的 Host，可以理解为由 IP, Port 唯一确定的服务实例
+
+Downstream
+发送请求给 Envoy 的 Host 是 Downstream(下游)，例如gRPC的 client
+
+Upstream
+接收 Enovy 发出的请求的 Host 是Upstream(上游)，例如 gRPC的 server
+
+Listener
+Envoy 监听的一个地址，例如 ip:port, unix socket 等等
+
+Cluster
+一组功能一致的上游 Host，称为一个cluster。类似 k8s 的 Service, nginx 的 upstream
+
+Http Route Table
+HTTP 的路由规则，例如请求的域名，Path符合什么规则，转发给哪个 Cluster。
+
+
+4. 配置(v2)
+Envoy 的配置接口以 proto3(Protocol Buffers v3)的格式定义，完整的定义见 data plane API repository
+
+具体的配置文件编写支持：yaml, json, pb, pb_text 四种格式。下面都以 yaml 格式为例。
+
+先看一个简单的例子：
+
+1) 完全静态的配置
+
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address: { address: 127.0.0.1, port_value: 9901 }
+
+static_resources:
+  listeners:
+  - name: listener_0
+    address:
+      socket_address: { address: 127.0.0.1, port_value: 10000 }
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager
+        config:
+          stat_prefix: ingress_http
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: ["example.com"]
+              routes:
+              - match: { prefix: "/" }
+                route: { cluster: some_service }
+          http_filters:
+          - name: envoy.router
+  clusters:
+  - name: some_service
+    connect_timeout: 0.25s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    hosts: [{ socket_address: { address: 127.0.0.2, port_value: 1234 }}]
+
+在上面的例子中，我们配置了一个 envoy实例，监听 127.0.0.1:10000，
+支持 http 协议访问，http 访问域名为：http://example.com
+接收到的所有http流量，转发给 127.0.0.2:1234 的服务。
+
+Cluster 的配置中至少包含以下信息：
+
+name：cluster 名称，就是服务名称
+type：该 cluster 怎么知道主机是否启动？即服务发现类型，有以下方式：
+  static：监听 cluster 中的所有主机
+  strict_dns：envoy 会监听 DNS，每个匹配的 A 记录都会认定为有效
+  logical_dns：envoy 将使用 DNS 来增加主机，如果 DNS 不再返回该主机也不会删除这些主机信息
+  sds：即 Serivce Discovery Serivce，envoy 访问外部的 REST 获取 cluster 成员信息
+lb_type：cluster 的负载均衡类型，有以下方式：
+  round_robin：轮询主机
+  weighted_least_request：最近获得最少请求的主机
+  random：随机
+hosts：能够定义 cluster 中主机的 URL 地址，通常是tcp:// URL
+
+很快大家发现一个问题，就是 some_service 这个cluster中 hosts 是固定的(127.0.0.2:1234)，
+但是很有可能对应的 host是会变的。
+例如：增加了新的 host(水平扩展), k8s环境中，发了新代码(pod变了)，等等。
+这时候，总不至于我们需要不停的修改 cluster 中的 hosts吧？
+如果是这样，我们就不会用 Envoy 了。
+
+
+2) 通过EDS动态配置cluster hosts
+
+接下来我们会碰到第一个动态配置的例子，就是动态配置 cluster 的 hosts。
+
+我们先假设有这么一个服务A，地址是：127.0.0.3:5678，会返回 proto3 编码的响应：
+
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.api.v2.ClusterLoadAssignment
+  cluster_name: some_service
+  endpoints:
+  - lb_endpoints:
+    - endpoint:
+        address:
+          socket_address:
+            address: 127.0.0.2
+            port_value: 1234
+
+那么我们把 envoy 的配置调整为：
+
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address: { address: 127.0.0.1, port_value: 9901 }
+
+static_resources:
+  listeners:
+  - name: listener_0
+    address:
+      socket_address: { address: 127.0.0.1, port_value: 10000 }
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager
+        config:
+          stat_prefix: ingress_http
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: ["example.com"]
+              routes:
+              - match: { prefix: "/" }
+                route: { cluster: some_service }
+          http_filters:
+          - name: envoy.router
+  clusters:
+  - name: some_service
+    connect_timeout: 0.25s
+    lb_policy: ROUND_ROBIN
+    type: EDS
+    eds_cluster_config:
+      eds_config:
+        api_config_source:
+          api_type: GRPC
+          cluster_names: [xds_cluster]
+  - name: xds_cluster
+    connect_timeout: 0.25s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    http2_protocol_options: {}
+    hosts: [{ socket_address: { address: 127.0.0.3, port_value: 5678 }}]
+
+这样，some_service 这个 cluster 的 hosts 就能实现动态配置了。
+新的配置中，some_service 这个 cluster 的 hosts 是 EDS(Endpoint Discovery Service) 的返回值决定的，
+就是说 EDS 会返回 some_service 这个 cluster 的 hosts 的列表。
+新配置中，EDS 服务的地址定义在 xds_cluster 这个 cluster中，地址正是我们开头假设的服务A的地址。
+
+其实 Envoy 的 listener, cluster, http route 等都是可以动态配置的，方法和 EDS一样，
+通过 LDS, CDS, RDS 来实现配置，而它们统称为 xDS.
+
+
+5) 基于xDS的动态配置
+
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address: { address: 127.0.0.1, port_value: 9901 }
+
+dynamic_resources:
+  lds_config:
+    api_config_source:
+      api_type: GRPC
+      cluster_names: [xds_cluster]
+  cds_config:
+    api_config_source:
+      api_type: GRPC
+      cluster_names: [xds_cluster]
+
+static_resources:
+  clusters:
+  - name: xds_cluster
+    connect_timeout: 0.25s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    http2_protocol_options: {}
+    hosts: [{ socket_address: { address: 127.0.0.3, port_value: 5678 }}]
+这里我们假设 127.0.0.3:5678 提供完整的 xDS
+
+LDS:
+
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.api.v2.Listener
+  name: listener_0
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 10000
+  filter_chains:
+  - filters:
+    - name: envoy.http_connection_manager
+      config:
+        stat_prefix: ingress_http
+        codec_type: AUTO
+        rds:
+          route_config_name: local_route
+          config_source:
+            api_config_source:
+              api_type: GRPC
+              cluster_names: [xds_cluster]
+        http_filters:
+        - name: envoy.router
+
+RDS:
+
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.api.v2.RouteConfiguration
+  name: local_route
+  virtual_hosts:
+  - name: local_service
+    domains: ["*"]
+    routes:
+    - match: { prefix: "/" }
+      route: { cluster: some_service }
+
+CDS:
+
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.api.v2.Cluster
+  name: some_service
+  connect_timeout: 0.25s
+  lb_policy: ROUND_ROBIN
+  type: EDS
+  eds_cluster_config:
+    eds_config:
+      api_config_source:
+        api_type: GRPC
+        cluster_names: [xds_cluster]
+        
+EDS:
+
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.api.v2.ClusterLoadAssignment
+  cluster_name: some_service
+  endpoints:
+  - lb_endpoints:
+    - endpoint:
+        address:
+          socket_address:
+            address: 127.0.0.2
+            port_value: 1234

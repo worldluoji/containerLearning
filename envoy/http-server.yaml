@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: http-server
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+      labels:
+        app: http-server
+    spec:
+      containers:
+        - name: http-server
+          imagePullPolicy: Never #本地镜像，不拉取
+          image: registry-local/http-server:0.0.1
+          ports:
+            - containerPort: 8088
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-server
+spec:
+  ports:
+    - name: http
+      port: 8088
+      protocol: TCP
+      targetPort: 8088
+  selector:
+    app: http-server
