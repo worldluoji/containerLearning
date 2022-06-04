@@ -1,5 +1,5 @@
 apiVersion: networking.istio.io/v1beta1
-kind: VirtualService #VirtualService可以理解为一个高级的Service,访问域名simple.http.io 8088端口就转到destination
+kind: VirtualService #VirtualService可以理解为一个高级的Service,访问域名simple.http.io 80端口就转到destination
 metadata:
   name: simple
   namespace: simple
@@ -10,10 +10,10 @@ spec:
     - simple.http.io
   http:
     - match:
-        - port: 8088
+        - port: 80
       route:
         - destination:
-            host: http-server.simple.svc.cluster.local # <servicername>.<namespacename>.svc.cluster.loacal
+            host: http-server # servicername
             port:
               number: 8088
 ---
@@ -27,8 +27,8 @@ spec:
     istio: ingressgateway  #语义：往打了istio: ingressgateway标签的pod上插入一些规则
   servers:
     - hosts:
-        - simple.http.io
+      - simple.http.io  #请求的 header 里必须带 Host: simple.http.io 才能进入 gateway，进而抵达内部服务。
       port:
         name: http-simple
-        number: 8088
+        number: 80
         protocol: HTTP

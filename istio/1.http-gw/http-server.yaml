@@ -11,8 +11,7 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "80"
+        sidecar.istio.io/inject: "true"  # 关键，开启sidecar自动注入
       labels:
         app: http-server
     spec:
