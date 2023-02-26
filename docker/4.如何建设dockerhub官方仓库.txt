@@ -1,22 +1,22 @@
-1.Ê²Ã´ÊÇ¾µÏñ²Ö¿â£¿
-  ¾ÍÊÇ´æ·Å¾µÏñµÄµØ·½¡£
+1.ä»€ä¹ˆæ˜¯é•œåƒä»“åº“ï¼Ÿ
+  å°±æ˜¯å­˜æ”¾é•œåƒçš„åœ°æ–¹ã€‚
   
-2.µÇÂ¼ https://hub.docker.com/
-  ´´½¨Ò»¸öeureka-server²Ö¿â
+2.ç™»å½• https://hub.docker.com/
+  åˆ›å»ºä¸€ä¸ªeureka-serverä»“åº“
   
-3.±¾µØlinuxµÇÂ¼docker¹Ù·½
+3.æœ¬åœ°linuxç™»å½•dockerå®˜æ–¹
   docker login
   
-4.¸Ä¾µÏñµÄÃû£¬£¨ÎªÊ²Ã´Òª¸Ä£¿ÒòÎªdocker¹Ù·½¾µÏñ²Ö¿âÊÇÒÔ ÓÃ»§Ãû À´ÃüÃû²Ö¿âµÄ£©
+4.æ”¹é•œåƒçš„åï¼Œï¼ˆä¸ºä»€ä¹ˆè¦æ”¹ï¼Ÿå› ä¸ºdockerå®˜æ–¹é•œåƒä»“åº“æ˜¯ä»¥ ç”¨æˆ·å æ¥å‘½åä»“åº“çš„ï¼‰
   docker tag registry-agan/eureka-server:1.0.0 bobo0218bo/eureka-server:1.0.0
   
-5.ÍÆËÍ¾µÏñµ½¹Ù·½²Ö¿â
+5.æ¨é€é•œåƒåˆ°å®˜æ–¹ä»“åº“
   docker push bobo0218bo/eureka-server:1.0.0
   
-6.À­ÏÂÀ´¿´Ğ§¹û
-  ÏÈÉ¾³ı¾É¾µÏñ:docker rmi bobo0218bo/eureka-server:1.0.0
-  À­È¡¾µÏñ£ºdocker pull bobo0218bo/eureka-server:1.0.0
-  ´´½¨ÈİÆ÷£ºdocker run -d -p 8761:8761 --name=eureka docker.io/bobo0218bo/eureka-server:1.0.0
+6.æ‹‰ä¸‹æ¥çœ‹æ•ˆæœ
+  å…ˆåˆ é™¤æ—§é•œåƒ:docker rmi bobo0218bo/eureka-server:1.0.0
+  æ‹‰å–é•œåƒï¼šdocker pull bobo0218bo/eureka-server:1.0.0
+  åˆ›å»ºå®¹å™¨ï¼šdocker run -d -p 8761:8761 --name=eureka docker.io/bobo0218bo/eureka-server:1.0.0
   
   
   

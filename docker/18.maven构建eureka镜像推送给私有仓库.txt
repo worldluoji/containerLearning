@@ -1,59 +1,59 @@
-1.maven¹¹½¨eureka¾µÏñÍÆËÍ¸øË½ÓĞ²Ö¿â£¬ĞèÒª2¸ö²½Öè£º
-  a.¿ªÆôdockerÔ¶³ÌAPI
-  B.±àĞ´mavenµÄdocker²å¼ş
+1.mavenæ„å»ºeurekaé•œåƒæ¨é€ç»™ç§æœ‰ä»“åº“ï¼Œéœ€è¦2ä¸ªæ­¥éª¤ï¼š
+  a.å¼€å¯dockerè¿œç¨‹API
+  B.ç¼–å†™mavençš„dockeræ’ä»¶
   
-2.¿ªÆôdockerÔ¶³ÌAPI
+2.å¼€å¯dockerè¿œç¨‹API
 	a.vi /usr/lib/systemd/system/docker.service
-	  ÔÚÅäÖÃÎÄ¼şÖĞ£¬¼ÓÈë£º
+	  åœ¨é…ç½®æ–‡ä»¶ä¸­ï¼ŒåŠ å…¥ï¼š
 	  -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
-  b.ÖØÆôdocker
+  b.é‡å¯docker
     systemctl daemon-reload
 		systemctl restart docker
-	c.ÑéÖ¤dockerÔ¶³ÌapiÊÇ·ñÉúĞ§
+	c.éªŒè¯dockerè¿œç¨‹apiæ˜¯å¦ç”Ÿæ•ˆ
 	  netstat -anp|grep 2375
 		curl 127.0.0.1:2375/info
 		
-3.±àĞ´mavenµÄdocker²å¼ş
-  ÅäÖÃhosts 192.168.0.138 registry-agan
-==================docker maven²å¼ş======start=============================
+3.ç¼–å†™mavençš„dockeræ’ä»¶
+  é…ç½®hosts 192.168.0.138 registry-agan
+==================docker mavenæ’ä»¶======start=============================
   	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Ìí¼Ódocker maven²å¼ş -->
+			<!-- æ·»åŠ docker mavenæ’ä»¶ -->
 			<plugin>
 				<groupId>com.spotify</groupId>
 				<artifactId>docker-maven-plugin</artifactId>
 				<version>1.1.1</version>
 				<configuration>
-					<!-- ÍÆËÍµ½Ö¸¶¨µÄ²Ö¿â -->
+					<!-- æ¨é€åˆ°æŒ‡å®šçš„ä»“åº“ -->
 					<registryUrl>registry-agan:5000</registryUrl>
-					<!-- ¿ªÆôdockerÔ¶³ÌAPIµÄ¶Ë¿Ú -->
+					<!-- å¼€å¯dockerè¿œç¨‹APIçš„ç«¯å£ -->
 					<dockerHost>http://registry-agan:2375</dockerHost>
-					<!-- Ö¸¶¨¾µÏñÃû³Æ ¸ñÊ½£º²Ö¿âÓòÃû£º¶Ë¿Ú/¾µÏñÃû×Ö£º¾µÏñµÄ°æ±¾ºÅ -->
+					<!-- æŒ‡å®šé•œåƒåç§° æ ¼å¼ï¼šä»“åº“åŸŸåï¼šç«¯å£/é•œåƒåå­—ï¼šé•œåƒçš„ç‰ˆæœ¬å· -->
 					<imageName>registry-agan:5000/${project.artifactId}:${project.version}</imageName>
-					<!-- Ö¸¶¨»ù´¡¾µÏñ ÀàËÆdockerfileµÄFROMÖ¸Áî -->
+					<!-- æŒ‡å®šåŸºç¡€é•œåƒ ç±»ä¼¼dockerfileçš„FROMæŒ‡ä»¤ -->
 					<baseImage>java:8</baseImage>
-					<!-- ÅäÖÃÈİÆ÷Æô¶¯ºó£¬Ö´ĞĞÊ²Ã´ÃüÁî£¬µÈÓÚÓë dockerfileµÄENTRYPOINT -->
+					<!-- é…ç½®å®¹å™¨å¯åŠ¨åï¼Œæ‰§è¡Œä»€ä¹ˆå‘½ä»¤ï¼Œç­‰äºä¸ dockerfileçš„ENTRYPOINT -->
 					<entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint>
-					<!-- Îªdockerde tagÖ¸¶¨°æ±¾ºÅ¡¢latest -->
+					<!-- ä¸ºdockerde tagæŒ‡å®šç‰ˆæœ¬å·ã€latest -->
 					<imageTags>
 						<imageTag>${project.version}</imageTag>
 						<imageTag>latest</imageTag>
 					</imageTags>
-					<!-- ÊÇ·ñÓĞpushµÄ¹¦ÄÜ true´ú±íÓĞ -->
+					<!-- æ˜¯å¦æœ‰pushçš„åŠŸèƒ½ trueä»£è¡¨æœ‰ -->
 					<pushImage>true</pushImage>
-					<!-- pushºóÊÇ·ñ¸²¸ÇÒÑ´æÔÚµÄ±êÇ©¾µÏñ -->
+					<!-- pushåæ˜¯å¦è¦†ç›–å·²å­˜åœ¨çš„æ ‡ç­¾é•œåƒ -->
 					<forceTags>true</forceTags>
-					<!-- ¸´ÖÆjar°üµ½dockerÈİÆ÷Ö¸¶¨µÄÄ¿Â¼ -->
+					<!-- å¤åˆ¶jaråŒ…åˆ°dockerå®¹å™¨æŒ‡å®šçš„ç›®å½• -->
 					<resources>
 						<resource>
 							<targetPath>/</targetPath>
-							<!-- Ö¸¶¨Òª¸´ÖÆjar°üµÄ¸ùÄ¿Â¼£¬${project.build.directory}´ú±í targetµÄÄ¿Â¼ -->
+							<!-- æŒ‡å®šè¦å¤åˆ¶jaråŒ…çš„æ ¹ç›®å½•ï¼Œ${project.build.directory}ä»£è¡¨ targetçš„ç›®å½• -->
 							<directory>${project.build.directory}</directory>
-							<!-- Ö¸¶¨Òª¸´ÖÆµÄÎÄ¼ş£¬${project.build.finalName}´ú±í´ò°üºóµÄjar -->
+							<!-- æŒ‡å®šè¦å¤åˆ¶çš„æ–‡ä»¶ï¼Œ${project.build.finalName}ä»£è¡¨æ‰“åŒ…åçš„jar -->
 							<include>${project.build.finalName}.jar</include>
 						</resource>
 					</resources>
@@ -61,6 +61,6 @@
 			</plugin>
 		</plugins>
 	</build>
-==================docker maven²å¼ş======end=============================
-Ö´ĞĞÃüÁî£º
+==================docker mavenæ’ä»¶======end=============================
+æ‰§è¡Œå‘½ä»¤ï¼š
 clean package -DskipTests docker:build
