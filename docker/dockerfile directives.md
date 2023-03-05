@@ -49,11 +49,11 @@ Dockerfile中包含了大量的指令，这些指令完成的功能，使用的�
 
 `ADD`与`COPY`指令具有相似的功能，都支持复制本地文件到镜像的功能。但`ADD`指令还支持其他功能。在 `ADD` 指令中，`<src>`可以是一个网络文件的下载地址， 比如 `ADD http://example.com/iamctl.yaml /`会在镜像中创建文件`/iamctl.yaml`。
 
-`<src>`还可以是一个压缩归档文件，该文件在复制到容器时会被解压提取，例如`ADD iam.tar.xz /`。但是若URL中的文件为归档文件，则不会被解压提取。
+ADD 的 `<src>`还可以是一个压缩文件，该文件在复制到容器时会被解压提取，例如`ADD iam.tar.xz /`。
 
 在编写Dockerfile时，推荐使用`COPY`，因为`COPY`只支持本地文件，它比 `ADD` 更加透明。
 
-7) `RUN`
+1) `RUN`
 
 `RUN`指令有两种格式：
 
