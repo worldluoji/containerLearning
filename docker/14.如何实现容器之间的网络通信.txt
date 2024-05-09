@@ -1,51 +1,53 @@
-1.½ñÌìµÄÒµÎñ³¡¾°ÊÇ£ºÓĞ3¸öÈİÆ÷£º
+1.ä»Šå¤©çš„ä¸šåŠ¡åœºæ™¯æ˜¯ï¼šæœ‰3ä¸ªå®¹å™¨ï¼š
    mysql   eureka   product 
-2.°²×°mysql
+   
+2.å®‰è£…mysql
 	docker run -p 3306:3306 --name mysql \
 	-e MYSQL_ROOT_PASSWORD=agan \
 	-d mysql:5.7
 
-3.²é¿´mysqlµÄIPĞÅÏ¢
-  ½øÈëÈİÆ÷£ºdocker exec -it mysql /bin/bash
-  docker¾µÏñÃ»ÓĞifconfig¡¢pingÖ¸Áî
+3.æŸ¥çœ‹mysqlçš„IPä¿¡æ¯
+  è¿›å…¥å®¹å™¨ï¼šdocker exec -it mysql /bin/bash
+  dockeré•œåƒæ²¡æœ‰ifconfigã€pingæŒ‡ä»¤
 	apt-get update
 	apt install net-tools # ifconfig
 	apt install iputils-ping # ping
 	
-4.´´½¨eurekaÈİÆ÷
+4.åˆ›å»ºeurekaå®¹å™¨
   docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:1.0.0
   
-5.²¿Êğproduct¾µÏñºÍÈİÆ÷
-  ======================dockerfileÎÄ¼ş======start============================
-	#1.»ù´¡¾µÏñ£ºFROMÖ¸Áî£º»ù´¡¾µÏñÃû£ºtag,ÀıÈçjava:8
+5.éƒ¨ç½²producté•œåƒå’Œå®¹å™¨
+  ======================dockerfileæ–‡ä»¶======start============================
+	#1.åŸºç¡€é•œåƒï¼šFROMæŒ‡ä»¤ï¼šåŸºç¡€é•œåƒåï¼štag,ä¾‹å¦‚java:8
 	FROM java:8
 	
-	#2.Î¬»¤Õß£º¸ñÊ½£ºMAINTAINER <name>
+	#2.ç»´æŠ¤è€…ï¼šæ ¼å¼ï¼šMAINTAINER <name>
 	MAINTAINER agan
 	
-	#3.¾µÏñµÄ²Ù×÷Ö¸Áî
-	# ADD¿½±´Ò»¸öÎÄ¼şµ½ÈİÆ÷ÖĞ£¬¸ñÊ½£ºADD <src> <dest>
+	#3.é•œåƒçš„æ“ä½œæŒ‡ä»¤
+	# ADDæ‹·è´ä¸€ä¸ªæ–‡ä»¶åˆ°å®¹å™¨ä¸­ï¼Œæ ¼å¼ï¼šADD <src> <dest>
 	ADD e-book-product-core-0.0.1-SNAPSHOT.jar  /data/app.jar
 	
 	
-	#5.ÅäÖÃÈİÆ÷Æô¶¯ºó£¬Ö´ĞĞÊ²Ã´ÃüÁî
+	#5.é…ç½®å®¹å™¨å¯åŠ¨åï¼Œæ‰§è¡Œä»€ä¹ˆå‘½ä»¤
 	ENTRYPOINT ["java","-jar","/data/app.jar"]
-	======================dockerfileÎÄ¼ş======end============================
-	¹¹½¨¾µÏñ£º  docker build -t registry-agan/product-server:1.0.0 .
-	´´½¨ÈİÆ÷£º
+	======================dockerfileæ–‡ä»¶======end============================
+	æ„å»ºé•œåƒï¼š  docker build -t registry-agan/product-server:1.0.0 .
+	åˆ›å»ºå®¹å™¨ï¼š
 	docker run -d -p 8083:8083 --name product \
 	--link mysql:aganmysql \
 	--link eureka:aganeureka \
 	registry-agan/product-server:1.0.0
-	×¢£ºlink¾ÍÊÇÈİÆ÷Ö±½ÓµÄÁ¬½Ó£¬Äã²»ÓÃIPµÄÇé¿öÏÂ¿ÉÒÔÍ¨¹ılinkÀ´ÊµÏÖÈİÆ÷ÃûÖ®¼äµÄÍ¨ĞÅ£»ËüµÄÓï·¨ÊÇ link ÈİÆ÷Ãû£º±ğÃû
+	æ³¨ï¼šlinkå°±æ˜¯å®¹å™¨ç›´æ¥çš„è¿æ¥ï¼Œä½ ä¸ç”¨IPçš„æƒ…å†µä¸‹å¯ä»¥é€šè¿‡linkæ¥å®ç°å®¹å™¨åä¹‹é—´çš„é€šä¿¡ï¼›å®ƒçš„è¯­æ³•æ˜¯ link å®¹å™¨åï¼šåˆ«å
 	
-6.¿´Ğ§¹û 
+6.çœ‹æ•ˆæœ 
    http://192.168.0.138:8761/
    http://192.168.0.138:8083/product/findAllProduct
-7.linkµÄÔ­Àí
+
+7.linkçš„åŸç†
   docker exec -it product /bin/bash
   cat /etc/hosts
-  Ô­Àí¾ÍÊÇÔÚprodctÈİÆ÷ÖĞµÄhosts¼ÓÁË2Ìõ¼ÇÂ¼¡£
+  åŸç†å°±æ˜¯åœ¨prodctå®¹å™¨ä¸­çš„hostsåŠ äº†2æ¡è®°å½•ã€‚
   
   
   

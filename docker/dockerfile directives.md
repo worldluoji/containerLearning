@@ -49,11 +49,11 @@ Dockerfile中包含了大量的指令，这些指令完成的功能，使用的�
 
 `ADD`与`COPY`指令具有相似的功能，都支持复制本地文件到镜像的功能。但`ADD`指令还支持其他功能。在 `ADD` 指令中，`<src>`可以是一个网络文件的下载地址， 比如 `ADD http://example.com/iamctl.yaml /`会在镜像中创建文件`/iamctl.yaml`。
 
-`<src>`还可以是一个压缩归档文件，该文件在复制到容器时会被解压提取，例如`ADD iam.tar.xz /`。但是若URL中的文件为归档文件，则不会被解压提取。
+ADD 的 `<src>`还可以是一个压缩文件，该文件在复制到容器时会被解压提取，例如`ADD iam.tar.xz /`。
 
 在编写Dockerfile时，推荐使用`COPY`，因为`COPY`只支持本地文件，它比 `ADD` 更加透明。
 
-7) `RUN`
+1) `RUN`
 
 `RUN`指令有两种格式：
 
@@ -67,6 +67,9 @@ Dockerfile中包含了大量的指令，这些指令完成的功能，使用的�
 因为exec格式不会在shell中执行，所以环境变量不会被替换。比如，执行`RUN ["echo", "$USER"]`指令时，`$USER`不会做变量替换。如果希望运行shell程序，指令可以写成 `RUN ["/bin/bash", "-c", "echo", "$USER"]`。
 
 8) `CMD`
+ENTRYPOINT和CMD都是在docker image里执行一条命令, 但是他们有一些微妙的区别。在绝大多数情况下, 你只要在这2者之间选择一个调用就可以。
+
+从根本上说, ENTRYPOINT 和 CMD 都是让用户<strong>指定一个可执行程序</strong>, 这个可执行程序在 container 启动后自动启动. 实际上, 如果你想让自己制作的镜像自动运行程序(不需要在 docker run 后面添加命令行指定运行的命令), 你必须在 Dockerfile里面, 使用 ENTRYPOINT 或者 CMD 命令。
 
 `CMD`指令有3种格式:
 
@@ -75,6 +78,31 @@ Dockerfile中包含了大量的指令，这些指令完成的功能，使用的�
 * `CMD ["param1", "param2"]` (为`ENTRYPOINT`指令提供参数)
 
 `CMD`指令提供容器运行时的默认命令或参数，一个Dockerfile中可以有多条`CMD`指令，但只有最后一条`CMD`指令有效。`CMD ["param1", "param2"]`格式用来跟`ENTRYPOINT`指令配合使用，`CMD`指令中的参数会添加到`ENTRYPOINT`指令中。当使用shell和exec格式时，命令在容器中的运行方式与`RUN`指令相同。如果在执行`docker run` 时指定了命令行参数，则会覆盖`CMD`指令中的命令。
+
+比如, 我们写了一个这样的Dockerfile:
+```
+FROM ubuntu:trusty
+CMD ping localhost 
+```
+
+如果根据这个Dockerfile构建一个新image, 名字叫demo
+```
+$ docker run -t demo
+PING localhost (127.0.0.1) 56(84) bytes of data.
+64 bytes from localhost (127.0.0.1): icmp_seq=1 ttl=64 time=0.051 ms
+64 bytes from localhost (127.0.0.1): icmp_seq=2 ttl=64 time=0.038 ms
+^C
+--- localhost ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 999ms
+rtt min/avg/max/mdev = 0.026/0.032/0.039/0.008 ms
+```
+可以看出ping命令在docker启动后自己执行, 但是我们可以在命令行启动docker镜像时, 执行其他命令行参数, 覆盖默认的CMD
+
+```
+$ docker run demo hostname
+6c1573c0d4c0
+```
+docker启动后, 并没有执行ping命令, 而是运行了hostname命令
 
 9) `ENTRYPOINT`
 
@@ -91,7 +119,14 @@ Dockerfile中包含了大量的指令，这些指令完成的功能，使用的�
 
 一个Dockerfile中可以有多条`ENTRYPOINT`指令，但只有最后一条`ENTRYPOINT`指令有效。
 
-10) `ONBUILD`
+和CMD类似, 默认的ENTRYPOINT也在docker run时, 也可以被覆盖. 在运行时, 用--entrypoint覆盖默认的ENTRYPOINT
+```
+$ docker run --entrypoint hostname demo
+075a2fa95ab7 
+```
+
+
+1)  `ONBUILD`
 
 格式：`ONBUILD [INSTRUCTION]`
 
@@ -165,3 +200,8 @@ HEALTHCHECK --interval=5s --timeout=3s\
 格式：`STOPSIGNAL signal`
 
 `STOPSIGNAL`指令指定了容器退出时，发送给容器的系统调用信号。
+
+<br>
+
+## 参考
+https://zhuanlan.zhihu.com/p/30555962

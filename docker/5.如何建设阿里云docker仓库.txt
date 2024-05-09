@@ -1,10 +1,10 @@
-1.½øÈë°¢ÀïÔÆ£¬ÏÈ´´½¨ÃüÃû¿Õ¼ä¡£
-2.½¨¸ö¾µÏñ²Ö¿â
-3.µÇÂ¼°¢ÀïÔÆDocker Registry
-	docker login --username=ÄãµÄÓÃ»§Ãû registry.cn-shenzhen.aliyuncs.com
-4.¸Ä¾µÏñÃû£¨ÒòÎªÒª¸Ä²Ö¿âÃû×Ö£©
+1.è¿›å…¥é˜¿é‡Œäº‘ï¼Œå…ˆåˆ›å»ºå‘½åç©ºé—´ã€‚
+2.å»ºä¸ªé•œåƒä»“åº“
+3.ç™»å½•é˜¿é‡Œäº‘Docker Registry
+	docker login --username=ä½ çš„ç”¨æˆ·å registry.cn-shenzhen.aliyuncs.com
+4.æ”¹é•œåƒåï¼ˆå› ä¸ºè¦æ”¹ä»“åº“åå­—ï¼‰
   docker tag 4a32029c0227 registry.cn-shenzhen.aliyuncs.com/agan/eureka-server:1.0.0
-5.pushµ½°¢Àï²Ö¿â
+5.pushåˆ°é˜¿é‡Œä»“åº“
   docker push registry.cn-shenzhen.aliyuncs.com/agan/eureka-server:1.0.0
-6. ´ÓRegistryÖĞÀ­È¡¾µÏñ
+6. ä»Registryä¸­æ‹‰å–é•œåƒ
 	docker pull registry.cn-shenzhen.aliyuncs.com/agan/eureka-server:1.0.0

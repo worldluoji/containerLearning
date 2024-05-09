@@ -1,24 +1,24 @@
-1.maven¹¹½¨°¢ÀïÔÆ²Ö¿â¾µÏñĞèÒª2¸ö²½Öè£º
-  a.mavenµÇÂ¼°¢ÀïÔÆDocker Registry
-  b.maven pushµ½°¢Àï²Ö¿â
+1.mavenæ„å»ºé˜¿é‡Œäº‘ä»“åº“é•œåƒéœ€è¦2ä¸ªæ­¥éª¤ï¼š
+  a.mavenç™»å½•é˜¿é‡Œäº‘Docker Registry
+  b.maven pushåˆ°é˜¿é‡Œä»“åº“
 
-2.mavenµÇÂ¼°¢ÀïÔÆDocker Registry
-  ÔÚ apache-maven-3.0.5\conf\settings.xmlÅäÖÃÎÄ¼şÖĞÅäÖÃÒÔÏÂÄÚÈİ£º
+2.mavenç™»å½•é˜¿é‡Œäº‘Docker Registry
+  åœ¨ apache-maven-3.0.5\conf\settings.xmlé…ç½®æ–‡ä»¶ä¸­é…ç½®ä»¥ä¸‹å†…å®¹ï¼š
 	<server>
-      <!--mavenµÄpomÖĞ¿ÉÒÔ¸ù¾İÕâ¸öidÕÒµ½Õâ¸öserver½ÚµãµÄÅäÖÃ-->  
+      <!--mavençš„pomä¸­å¯ä»¥æ ¹æ®è¿™ä¸ªidæ‰¾åˆ°è¿™ä¸ªserverèŠ‚ç‚¹çš„é…ç½®-->  
       <id>docker-aliyun</id>
-      <!--ÕâÀïÊÇÔÚ°¢ÀïÔÆ×¢²áµÄÕËºÅ-->
+      <!--è¿™é‡Œæ˜¯åœ¨é˜¿é‡Œäº‘æ³¨å†Œçš„è´¦å·-->
       <username>agan</username>
-      <!--ÕâÀïÊÇÔÚ°¢ÀïÔÆ×¢²áµÄÃÜÂë-->
+      <!--è¿™é‡Œæ˜¯åœ¨é˜¿é‡Œäº‘æ³¨å†Œçš„å¯†ç -->
       <password>agan</password>
       <configuration>
-	      <!--ÕâÊÇÔÚ°¢ÀïÔÆ×¢²áÊ±ÌîĞ´µÄÓÊÏä-->
+	      <!--è¿™æ˜¯åœ¨é˜¿é‡Œäº‘æ³¨å†Œæ—¶å¡«å†™çš„é‚®ç®±-->
 	      <email>393847237@qq.com</email>
       </configuration>
 	</server>
 	
 
-3.maven pushµ½°¢Àï²Ö¿â
+3.maven pushåˆ°é˜¿é‡Œä»“åº“
 
 	<build>
 		<plugins>
@@ -26,39 +26,39 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Ìí¼Ódocker maven²å¼ş -->
+			<!-- æ·»åŠ docker mavenæ’ä»¶ -->
 			<plugin>
 				<groupId>com.spotify</groupId>
 				<artifactId>docker-maven-plugin</artifactId>
 				<version>1.1.1</version>
-				<!--docker¾µÏñÏà¹ØµÄÅäÖÃĞÅÏ¢ -->
+				<!--dockeré•œåƒç›¸å…³çš„é…ç½®ä¿¡æ¯ -->
 				<configuration>
-					<!-- ÓëmavenÅäÖÃÎÄ¼şsettings.xmlÖĞÅäÖÃµÄserver.idÒ»ÖÂ£¬ÓÃÓÚÍÆËÍ¾µÏñ -->
+					<!-- ä¸mavené…ç½®æ–‡ä»¶settings.xmlä¸­é…ç½®çš„server.idä¸€è‡´ï¼Œç”¨äºæ¨é€é•œåƒ -->
 					<serverId>docker-aliyun</serverId>
-					<!--Ë½ÓĞ²Ö¿âµØÖ· -->
+					<!--ç§æœ‰ä»“åº“åœ°å€ -->
 					<registryUrl>registry.cn-shenzhen.aliyuncs.com</registryUrl>
-					<!--¾µÏñÃû£¬ÕâÀïÓÃ¹¤³ÌÃû -->
+					<!--é•œåƒåï¼Œè¿™é‡Œç”¨å·¥ç¨‹å -->
 					<imageName>registry.cn-shenzhen.aliyuncs.com/agan/${project.artifactId}:${project.version}</imageName>
-					<!-- Ö¸¶¨»ù´¡¾µÏñ ÀàËÆdockerfileµÄFROMÖ¸Áî -->
+					<!-- æŒ‡å®šåŸºç¡€é•œåƒ ç±»ä¼¼dockerfileçš„FROMæŒ‡ä»¤ -->
 					<baseImage>java:8</baseImage>
-					<!-- ÅäÖÃÈİÆ÷Æô¶¯ºó£¬Ö´ĞĞÊ²Ã´ÃüÁî£¬µÈÓÚÓë dockerfileµÄENTRYPOINT -->
+					<!-- é…ç½®å®¹å™¨å¯åŠ¨åï¼Œæ‰§è¡Œä»€ä¹ˆå‘½ä»¤ï¼Œç­‰äºä¸ dockerfileçš„ENTRYPOINT -->
 					<entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint>
-					<!-- Îªdockerde tagÖ¸¶¨°æ±¾ºÅ¡¢latest -->
+					<!-- ä¸ºdockerde tagæŒ‡å®šç‰ˆæœ¬å·ã€latest -->
 					<imageTags>
 						<imageTag>${project.version}</imageTag>
 						<imageTag>latest</imageTag>
 					</imageTags>
-					<!-- ÊÇ·ñÓĞpushµÄ¹¦ÄÜ true´ú±íÓĞ -->
+					<!-- æ˜¯å¦æœ‰pushçš„åŠŸèƒ½ trueä»£è¡¨æœ‰ -->
 					<pushImage>true</pushImage>
-					<!-- pushºóÊÇ·ñ¸²¸ÇÒÑ´æÔÚµÄ±êÇ©¾µÏñ -->
+					<!-- pushåæ˜¯å¦è¦†ç›–å·²å­˜åœ¨çš„æ ‡ç­¾é•œåƒ -->
 					<forceTags>true</forceTags>
-					<!-- ¸´ÖÆjar°üµ½dockerÈİÆ÷Ö¸¶¨µÄÄ¿Â¼ -->
+					<!-- å¤åˆ¶jaråŒ…åˆ°dockerå®¹å™¨æŒ‡å®šçš„ç›®å½• -->
 					<resources>
 						<resource>
 							<targetPath>/</targetPath>
-							<!-- Ö¸¶¨Òª¸´ÖÆjar°üµÄ¸ùÄ¿Â¼£¬${project.build.directory}´ú±í targetµÄÄ¿Â¼ -->
+							<!-- æŒ‡å®šè¦å¤åˆ¶jaråŒ…çš„æ ¹ç›®å½•ï¼Œ${project.build.directory}ä»£è¡¨ targetçš„ç›®å½• -->
 							<directory>${project.build.directory}</directory>
-							<!-- Ö¸¶¨Òª¸´ÖÆµÄÎÄ¼ş£¬${project.build.finalName}´ú±í´ò°üºóµÄjar -->
+							<!-- æŒ‡å®šè¦å¤åˆ¶çš„æ–‡ä»¶ï¼Œ${project.build.finalName}ä»£è¡¨æ‰“åŒ…åçš„jar -->
 							<include>${project.build.finalName}.jar</include>
 						</resource>
 					</resources>
@@ -67,6 +67,6 @@
 		</plugins>
 	</build>
 
-4.Ö´ĞĞÃüÁî£º
+4.æ‰§è¡Œå‘½ä»¤ï¼š
 clean package -DskipTests docker:build
 

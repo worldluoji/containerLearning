@@ -1,76 +1,73 @@
-1.´î½¨Ò»¸ö¾µÏñ²Ö¿â¹ÜÀíÏµÍ³ĞèÒª3¸ö²½Öè£º
-  a.Éú³ÉÒ»¸öÈÏÖ¤ÎÄ¼ş£¬rsaµÄÈÏÖ¤ÎÄ¼ş¡£
-  b.´´½¨Ò»¸ö²Ö¿âÈİÆ÷¡£
-  c.´´½¨Ò»¸ö²Ö¿âweb¹ÜÀíÏµÍ³¡£
+1.ä¸šåŠ¡åœºæ™¯ï¼š
+  å¦‚ä½•åœ¨å®¿ä¸»æœºæŸ¥çœ‹eurekaçš„æ—¥å¿—ï¼Ÿ
+2.ç»™eurekaæ—¥å¿—æŒ‡å®šç›®å½• ï¼š/opt/data/
+
+=====================docker run   volume================================
+1.é‡æ–°æ„å»ºeureka
+  docker build -t registry-agan/eureka-server:1.0.0 .
+
+2.ä»€ä¹ˆæ˜¯volumeï¼Ÿ
+  å°±æ˜¯æŠŠdockerçš„æ•°æ®ä¿å­˜åˆ°å®¿ä¸»æœºçš„ç£ç›˜ä¸­ï¼Œé€šå¸¸è¯´çš„å°±æ˜¯æŒ‚è½½ç‚¹ï¼Œæˆ–è€…å«åšå·ã€‚
+  è¯­æ³•ï¼š -v å®¿ä¸»æœºç›®å½•ï¼šå®¹å™¨ç›®å½•
+3.åˆ›å»ºå®¹å™¨
+  docker run -d -p 8761:8761 --name=eureka \
+  --privileged=true \
+  -v /data/container/data/eureka:/opt/data \
+  registry-agan/eureka-server:1.0.0
   
-2.Éú³ÉÒ»¸öÈÏÖ¤ÎÄ¼ş£¬rsaµÄÈÏÖ¤ÎÄ¼ş¡£
-  ÔÚ/data/volume/registry-aganÄ¿Â¼ÏÂÖ´ĞĞ ÒÔÏÂÃüÁî£º
-  openssl req -new -newkey rsa:4096 -days 365 -subj "/CN=localhost"  -nodes -x509 -keyout conf/auth.key -out conf/auth.cert
+=====================dockerfile  volume================================
+			1.ç»™docker file åŠ volume
+			#1.åŸºç¡€é•œåƒï¼šFROMæŒ‡ä»¤ï¼šåŸºç¡€é•œåƒåï¼štag,ä¾‹å¦‚java:8
+			FROM java:8
+			
+			#2.ç»´æŠ¤è€…ï¼šæ ¼å¼ï¼šMAINTAINER <name>
+			MAINTAINER agan
+			
+			#3.åŠ å…¥è¿‡è½½ç‚¹
+			VOLUME /opt/data
+			
+			#3.é•œåƒçš„æ“ä½œæŒ‡ä»¤
+			# ADDæ‹·è´ä¸€ä¸ªæ–‡ä»¶åˆ°å®¹å™¨ä¸­ï¼Œæ ¼å¼ï¼šADD <src> <dest>
+			ADD eureka-server-0.0.1-SNAPSHOT.jar  /data/app.jar
+			
+			#å‘Šè¯‰dockerå®¹å™¨æš´éœ²ç«¯å£ï¼Œåœ¨å®¹å™¨å¯åŠ¨çš„æ—¶å€™ï¼Œéœ€è¦é€šè¿‡-p åšç«¯å£æ˜ å°„
+			#EXPOSE 8761
+			
+			#5.é…ç½®å®¹å™¨å¯åŠ¨åï¼Œæ‰§è¡Œä»€ä¹ˆå‘½ä»¤
+			ENTRYPOINT ["java","-jar","/data/app.jar"]
+			
+1.é‡æ–°æ„å»ºeureka
+  docker build -t registry-agan/eureka-server:1.0.0 .
   
-3.´´½¨Ò»¸ö²Ö¿âÈİÆ÷¡£
-  ´´½¨Ò»¸öÅäÖÃÎÄ¼ş£ºregistry-agan.yml
-  a.==============ÅäÖÃÎÄ¼ş=======================
-version: 0.1
-#¾µÏñ´æ´¢µØ·½
-storage:
-  filesystem:
-    rootdirectory: /var/lib/registry
-  #¾µÏñµÄÉ¾³ıÈ¨ÏŞ£¬enabled: true´ú±í¿ªÆôÉ¾³ıÈ¨ÏŞ
-  delete:
-    enabled: true
-log:
-  level: info
-#¿ªÆô²Ö¿âµÄÍøÂç£¬¶Ë¿ÚºÅÎª5000
-http:
-  addr: 0.0.0.0:5000
+2.åˆ›å»ºå®¹å™¨
+  docker run -d -p 8761:8761 --name=eureka \
+  --privileged=true \
+  registry-agan/eureka-server:1.0.0
+3.å¦‚ä½•æ‰¾åˆ°å®¿ä¸»æœºçš„æŒ‚è½½ç›®å½•ï¼Ÿ
+  docker inspect eureka
   
-  b.==============´´½¨²Ö¿âÃüÁî=======================
-docker run \
--v /data/volume/registry-agan/conf/registry-agan.yml:/etc/docker/registry/config.yml:ro \
--v /data/volume/registry-agan/conf/auth.cert:/etc/docker/registry/auth.cert:ro \
--p 5000:5000  --name registry-agan -d \
+  "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "cf527694ebafb92426a52f1916b26832b4c8977093083450a96fbccb3d866669",
+                "Source": "/var/lib/docker/volumes/cf527694ebafb92426a52f1916b26832b4c8977093083450a96fbccb3d866669/_data",
+                "Destination": "/opt/data",
+                "Driver": "local",
+                "Mode": "",
+                "RW": true,
+                "Propagation": ""
+            }
+======================æ€»ç»“=============================
+ä»–ä»¬æœ‰ä»€ä¹ˆåŒºåˆ«ï¼Ÿ
+docker run æ˜¯èƒ½æŒ‡å®šå®¿ä¸»æœºçš„ç›®å½•ã€‚
+dockerfile volume æ— æ³•æŒ‡å®šå®¿ä¸»æœºçš„ç›®å½•ï¼Œéƒ½æ˜¯è‡ªåŠ¨ç”Ÿæˆï¼Œè€Œä¸”æ˜¯éšæœºçš„ï¼›é»˜è®¤åœ¨/var/lib/docker/volumes/ã€‚
+ï¼ˆä¸ºä»€ä¹ˆæ˜¯éšæœºç”Ÿæˆï¼Ÿå› ä¸ºdockerfileæ— æ³•ç¡®å®šæ¯å°å®¿ä¸»æœºæ˜¯å¦éƒ½å­˜åœ¨ç›®å½•ï¼‰
+
+
+æœ€åæˆ‘ä»¬æ¥å­¦ä¹ ä¸€ä¸ªçœŸå®çš„æ¡ˆä¾‹ï¼Ÿ
+
+docker run -p 3306:3306 --name mysql \
+-e MYSQL_ROOT_PASSWORD=agan \
 --privileged=true \
-registry
-  
-
-4.´´½¨Ò»¸ö²Ö¿âweb¹ÜÀíÏµÍ³¡£
-´´½¨Ò»¸öÅäÖÃÎÄ¼ş£ºregistry-web.yml
-  a.==============ÅäÖÃÎÄ¼ş=======================
-registry:
-  # Ö¸¶¨registryµÄµØÖ·£¨×¢Òâ£ºregistry-aganÎª²Ö¿âµÄÈİÆ÷Ãû×Ö£©
-  url: http://registry-agan:5000/v2
-  #²Ö¿âµÄÃû³Æ£¨×¢Òâ£ºregistry-aganÎª²Ö¿âµÄÈİÆ÷Ãû×Ö£©
-  name: registry-agan:5000
-  #ÊÇ·ñÎªÖ»¶ÁÄ£Ê½£¬ÉèÖÃtrueÊ±£¬²»ÔÊĞíÉ¾³ı¾µÏñ
-  readonly: false
-  #È¨ÏŞÑéÖ¤
-  auth:
-    #ÊÇ·ñ¿ªÆôÑéÖ¤
-    enabled: true
-    #ÑéÖ¤Ö¤ÊéµÄkey
-    key: /conf/auth.key
-    #Ö¤Êé°ä·¢ÕßµÄÃû³Æ
-    issuer: agan
-    
-  b.==============´´½¨²Ö¿âweb¹ÜÀíÏµÍ³ÃüÁî=======================
-docker run \
--v /data/volume/registry-agan/conf/registry-web.yml:/conf/config.yml:ro \
--v /data/volume/registry-agan/conf/auth.key:/conf/auth.key \
--v /data/volume/registry-agan/db:/data \
--d -p 8080:8080 --link registry-agan --name registry-web \
---privileged=true \
-hyper/docker-registry-web
-×¢Òâ£º--link registry-aganºÜÖØÒª£¬Ã»ÓĞµÄ»°£¬ÎŞ·¨Á¬½Ó²Ö¿â¡£
-
-
-5.µÇÂ¼²Ö¿â¹ÜÀíÏµÍ³
-  http://192.168.0.138:8080/login/auth
-  ÓÃ»§Ãû=admin
-  ÃÜÂë =admin
-
-6.¸ø´î½¨ºÃµÄ²Ö¿â¼Ó¸ö¾µÏñ 
-  docker push registry-agan:5000/eureka-server:1.0.0
-
-7.È¨ÏŞÉèÖÃ
-  Ä¬ÈÏadminÓÃ»§ÊÇÃ»ÓĞÉ¾³ıÈ¨ÏŞ£¬ĞèÒªÖØĞÂ´´½¨ÓÃ»§£¬²¢ÇÒ¸øÓèÈ¨ÏŞ¡£
-  
+-v /data/container/data/mysql:/var/lib/mysql \
+-d mysql:5.7

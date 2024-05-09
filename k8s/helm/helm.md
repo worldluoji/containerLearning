@@ -79,7 +79,7 @@ Chart 模板一个应用只用编写一次，可以重复使用。在部署时�
 ## 5. 复用已有的Helm release
 ### 1) 操作Helm release repo
 ```
-helm repo add grafana https://grafana.github.io/Helm-charts
+helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 helm repo list
 helm search repo grafana
@@ -93,13 +93,13 @@ helm search支持两种不同的查询方式:
 
 ### 2) 从remote repo安装Helm chart
 ```
-helm upgrade --install loki grafana/loki-stack
+helm upgrade --install loki bitnami/grafana-loki
 ```
 安装完之后，你可以使用 helm status 来追踪 Release 的状态。
 
 ### 3) 本地安装Helm chart
 ```
-helm pull grafana/loki-stack
+helm pull bitnami/grafana-loki
 helm upgrade --install loki ./loki-stack
 ```
 也可以使用helm install进行安装。

@@ -1,26 +1,26 @@
-1.½øÈëÈİÆ÷
+1.è¿›å…¥å®¹å™¨
   docker exec -it eureka /bin/bash
   
-2.ĞŞ¸ÄÈİÆ÷µÄÄÚÈİ
+2.ä¿®æ”¹å®¹å™¨çš„å†…å®¹
   echo "alias ll='ls -l'" >> ~/.bashrc && source ~/.bashrc
 
-3.Éú³É¾µÏñÃüÁî
+3.ç”Ÿæˆé•œåƒå‘½ä»¤
   docker commit --help
-  -a ÓÃÀ´Ö¸¶¨×÷Õß
-	-c Ê¹ÓÃDockerfileÖ¸ÁîÀ´´´½¨¾µÏñ
-	-m ÃèÊöÎÒÃÇ´Ë´Î´´½¨imageµÄĞÅÏ¢
-	-p ÔÚcommitÊ±£¬½«ÈİÆ÷ÔİÍ£
+  -a ç”¨æ¥æŒ‡å®šä½œè€…
+	-c ä½¿ç”¨DockerfileæŒ‡ä»¤æ¥åˆ›å»ºé•œåƒ
+	-m æè¿°æˆ‘ä»¬æ­¤æ¬¡åˆ›å»ºimageçš„ä¿¡æ¯
+	-p åœ¨commitæ—¶ï¼Œå°†å®¹å™¨æš‚åœ
   
-4.ÖØĞÂÉú³É¾µÏñÀı×Ó
+4.é‡æ–°ç”Ÿæˆé•œåƒä¾‹å­
   docker commit -m="add ll" --author="agan" eureka registry-agan/eureka-server:2.0.0
   
-5.²é¿´ÊÇ·ñÉú³É³É¹¦ 
+5.æŸ¥çœ‹æ˜¯å¦ç”ŸæˆæˆåŠŸ 
   docker images
 
-6.´´½¨ÈİÆ÷
+6.åˆ›å»ºå®¹å™¨
   docker run -d -p 8761:8761 --name=eureka registry-agan/eureka-server:2.0.0
 
-7.ÌåÑéÊÇ·ñÓĞllµÄÃüÁî
+7.ä½“éªŒæ˜¯å¦æœ‰llçš„å‘½ä»¤
   docker exec -it eureka /bin/bash
   ll
   
