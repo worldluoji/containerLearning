@@ -1,13 +1,14 @@
 # Service Mesh
 ## 为什么提出Service Mesh
 Spring Cloud 和 Dubbo都是侵入式的，比如语言只能限制在 Java，并且开发的时候要按框架的指定方式来开发。这个理念跟微服务的独立技术栈也是相反的。
-Service Mesh是一种非侵入式技术，可以提供服务之间的网络调用、限流、熔断和服务监控等功能。Service Mesh 类似于 TCP/IP 协议，无需应用层感知，开发者只需要开发应用程序即可。所以，Service Mesh 是致力于解决服务间通讯的基础设施层。
+Service Mesh是一种非侵入式技术，可以提供服务之间的<strong>网络调用、限流、熔断和服务监控</strong>等功能。
+Service Mesh 类似于 TCP/IP 协议，无需应用层感知，开发者只需要开发应用程序即可。所以，Service Mesh 是致力于<strong>解决服务间通讯的基础设施层</strong>。
 
 ## Service Mesh的几个特点：
 - 应用程序间通讯的中间层。
 - 轻量级网络代理。
 - 非侵入式，应用程序无感知。
-- 可以将服务治理功能，例如重试、超时、监控、链路追踪、服务发现等功能，以及服务本身解耦。
+- 可以将服务治理功能，例如<strong>重试、超时、监控、链路追踪、服务发现</strong>等功能，以及服务本身解耦。
 
 ## Service开源项目
 社区有很多优秀的 Service Mesh 开源项目，例如 Istio 、Linkerd 等。当前最受欢迎的开源项目是 Istio。
