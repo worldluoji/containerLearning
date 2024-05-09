@@ -1,4 +1,8 @@
-1. Kubernetes项目的架构，跟它的原型项目 Borg 非常类似，都由 Master 和 Node 两种节点组成，
+# kubernates的组成
+
+<img src="./k8s架构图.png" />
+
+## 1. Kubernetes项目的架构，跟它的原型项目 Borg 非常类似，都由 Master 和 Node 两种节点组成，
 而这两种角色分别对应着控制节点和计算节点。
 
 虽然在 Master 节点的实现细节上 Borg 项目与 Kubernetes 项目不完全相同，
@@ -10,14 +14,14 @@ Borg 项目完全可以把 Docker 镜像看作一种新的应用打包方式。
 这些经验最主要的表现就是：从一开始，Kubernetes 项目就没有像同时期的各种“容器云”项目那样，
 把 Docker 作为整个架构的核心，而仅仅把它作为最底层的一个容器运行时实现。
 
-2. 控制节点
+## 2. 控制节点
 即 Master 节点，由三个紧密协作的独立组件组合而成，
 它们分别是负责 API 服务的 kube-apiserver、负责调度的 kube-scheduler，
 以及负责容器编排的 kube-controller-manager。
 整个集群的持久化数据，则由 kube-apiserver 处理后保存在 Etcd 中。
 
 
-3. 计算节点
+## 3. 计算节点
 计算节点上最核心的部分，则是一个叫作 kubelet 的组件。
 kubelet 主要负责同容器运行时（比如 Docker 项目）打交道。
 而这个交互所依赖的，是一个称作 CRI（Container Runtime Interface）的远程调用接口，
@@ -44,7 +48,7 @@ CSI（Container Storage Interface）。
 与 Borg 之间并没有直接的传承关系。
 
 
-4. Kubernetes 项目要着重解决的问题
+## 4. Kubernetes 项目要着重解决的问题
 Kubernetes 项目要着重解决的问题，则来自于 Borg 的研究人员在论文中提到的一个非常重要的观点：
 运行在大规模集群中的各种任务之间，实际上存在着各种各样的关系。
 这些关系（比如负载均衡、应用和DB的关系）的处理，才是作业编排和管理系统最困难的地方。
