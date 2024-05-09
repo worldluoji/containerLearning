@@ -12,6 +12,8 @@ Service Mesh是一种非侵入式技术，可以提供服务之间的网络调�
 ## Service开源项目
 社区有很多优秀的 Service Mesh 开源项目，例如 Istio 、Linkerd 等。当前最受欢迎的开源项目是 Istio。
 
+服务网格原生化: Kubernetes等容器编排平台正逐步将Service Mesh功能内置化，如Kubernetes的Service Topology、Service APIs等，旨在简化配置与管理，促进Service Mesh的广泛应用。
+
 ## istio
 - Istio 是一个完全开源的服务网格，作为透明的一层接入到现有的分布式应用程序里，提供服务治理等功能。
 - Istio 也是一个平台，拥有可以集成任何日志、遥测和策略系统的 API 接口。
