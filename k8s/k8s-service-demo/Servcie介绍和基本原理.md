@@ -1,26 +1,28 @@
-1. Service用于做POD的负载均衡，另外也是因为POD的IP不是固定的。
+# Servcie介绍和基本原理
+Service用于做POD的负载均衡，因为POD的IP不是固定的。
 
-2. Service如何被访问到的?一共三种方式
-	1）使用VIP进行访问，比如访问一个Service的VIP 10.2.1.233，会路由到对应的POD
-	2）以Servcie的DNS访问，DNS将域名解析为VIP, 这样就和方式1一样了
-	3）以Servcie的DNS访问，但是是Headless Servcie，不需要分配VIP，而是直接解析到POD的IP
+## 1. Service如何被访问到的?
+一共三种方式
+- 1）使用VIP进行访问，比如访问一个Service的VIP 10.2.1.233，会路由到对应的POD
+- 2）以Servcie的DNS访问，DNS将域名解析为VIP, 这样就和方式1一样了
+- 3）以Servcie的DNS访问，但是是Headless Servcie，不需要分配VIP，而是直接解析到POD的IP
 
 在 Kubernetes 中，Service 和 Pod 都会被分配对应的 DNS A 记录（从域名解析 IP 的记录）。
 
 对于 ClusterIP 模式的 Service 来说（ClusterIP非none），它代理的 Pod 被自动分配的 A 记录的格式是：
-<pod-name>.<svc-name>.<namespace>.pod.cluster.local。
+`<pod-name>.<svc-name>.<namespace>.pod.cluster.local`。
 这条记录指向 Pod 的 IP 地址。
 
 所谓的 Headless Service，其实仍是一个标准 Service 的 YAML 文件。
 只不过，它的 clusterIP 字段的值是：None，即：这个 Service，没有一个 VIP 作为“头”。这也就是 Headless 的含义。
 所以，这个 Service 被创建后并不会被分配一个 VIP，而是会以 DNS 记录的方式暴露出它所代理的 Pod。
 当创建了一个 Headless Service 之后，它所代理的所有 Pod 的 IP 地址，都会被绑定一个这样格式的 DNS 记录，
-如下所示：<pod-name>.<svc-name>.<namespace>.svc.cluster.local这个 DNS 记录，
+如下所示：`<pod-name>.<svc-name>.<namespace>.svc.cluster.local`这个 DNS 记录，
 正是 Kubernetes 项目为 Pod 分配的唯一的“可解析身份”（Resolvable Identity）。
 
 但如果你为 Pod 指定了 Headless Service，并且 Pod 本身声明了 hostname 和 subdomain 字段，
-那么这时候 Pod 的 A 记录就会变成：<pod 的 hostname>...svc.cluster.local, 例如：
-
+那么这时候 Pod 的 A 记录就会变成：`<pod 的 hostname>...svc.cluster.local`, 例如：
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -49,25 +51,28 @@ spec:
       - sleep
       - "3600"
     name: busybox
-
+```
 在上面这个 Service 和 Pod 被创建之后，你就可以通过 
 busybox-1.default-subdomain.default.svc.cluster.local 解析到这个 Pod 的 IP 地址了。
 相当于用hostname取代了Pod IP.
 
 补充：
-1）Pod 定义中有一个可选字段 spec.hostname 可用来直接指定 Pod 的 hostname。
+- 1）Pod 定义中有一个可选字段 spec.hostname 可用来直接指定 Pod 的 hostname。
 例如，某 Pod 的 spec.hostname 字段被设置为 my-host，则该 Pod 创建后 hostname 将被设为 my-host
-
-2）Pod 定义中还有一个可选字段 spec.subdomain 可用来指定 Pod 的 subdomain。
+- 2）Pod 定义中还有一个可选字段 spec.subdomain 可用来指定 Pod 的 subdomain。
 例如，名称空间 my-namespace 中，某 Pod 的 hostname 为 foo，并且 subdomain 为 bar，
 则该 Pod 的完整域名为 foo.bar.my-namespace.svc.cluster-domain.example。
 
-3. 访问一个Service, 能够被负载均衡选中的POD就叫做endpoint, 可以通过kubectl get ep查看。
+<br>
+
+## 2. endpoint 
+访问一个Service, 能够被负载均衡选中的POD就叫做endpoint, 可以通过kubectl get ep查看。
 需要注意的是，只有处于Running状态并且通过readinessProbe检查的Pod,才会出现在endpoint列表里面。
 而当一个POD出现问题时也会被Servcie所移除。
 endpoint就像一张中间表，记录了service和pod的映射关系，而service和pod正是多对多的关系。
 
 查看Service命令
+```
 $ kubectl get svc hostnames
 NAME        TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 hostnames   ClusterIP   10.0.1.175   <none>        80/TCP    5s
@@ -80,16 +85,21 @@ hostnames-yp2kp
 
 $ curl 10.0.1.175:80
 hostnames-bvc05
+```
 可见k8s默认时轮询的策略，3个pod每次访问不同的POD。
 这就是Servcie的ClusterIP模式，而Headless模式通常应用于有状态应用之中。
 
-4. Service最基本的工作原理。
+<br>
+
+## 3. Service最基本的工作原理
 Service由kube-proxy组件，加上iptables来共同实现
 实际上，Service 是由 kube-proxy 组件，加上 iptables 来共同实现的。
 举个例子，对于我们前面创建的名叫 hostnames 的 Service 来说，一旦它被提交给 Kubernetes，
 那么 kube-proxy 就可以通过 Service 的 Informer 感知到这样一个 Service 对象的添加。
 而作为对这个事件的响应，它就会在宿主机上创建这样一条 iptables 规则（你可以通过 iptables-save 看到它）
+```
 -A KUBE-SERVICES -d 10.0.1.175/32 -p tcp -m comment --comment "default/hostnames: cluster IP" -m tcp --dport 80 -j KUBE-SVC-NWV5X2332I4OT4T3
+```
 意思是访问10.0.1.175/32，目的端口是80的tcp包都先到这个KUBE-SVC-NWV5X2332I4OT4T3里去，
 
 10.0.1.175 正是这个 Service 的 VIP。所以这一条规则，就为这个 Service 设置了一个固定的入口地址。
@@ -97,9 +107,11 @@ Service由kube-proxy组件，加上iptables来共同实现
 
 我们即将跳转到的 KUBE-SVC-NWV5X2332I4OT4T3 规则，又有什么作用呢?
 它实际时一组规则的集合
+```
 -A KUBE-SVC-NWV5X2332I4OT4T3 -m comment --comment "default/hostnames:" -m statistic --mode random --probability 0.33332999982 -j KUBE-SEP-WNBA2IHDGP2BOBGZ
 -A KUBE-SVC-NWV5X2332I4OT4T3 -m comment --comment "default/hostnames:" -m statistic --mode random --probability 0.50000000000 -j KUBE-SEP-X3P2623AGDH6CDF3
 -A KUBE-SVC-NWV5X2332I4OT4T3 -m comment --comment "default/hostnames:" -j KUBE-SEP-57KPRZ3JQVENLNBR
+```
 这一组规则，实际上是一组随机模式（–mode random）的 iptables 链。
 而随机转发的目的地，分别是 KUBE-SEP-WNBA2IHDGP2BOBGZ、KUBE-SEP-X3P2623AGDH6CDF3 和 KUBE-SEP-57KPRZ3JQVENLNBR。
 实际，就是路由到背后的POD里面去。
@@ -108,6 +120,7 @@ Service由kube-proxy组件，加上iptables来共同实现
 我们应该将它们的 probability 字段的值分别设置为 1/3（0.333…）、1/2 和 1。
 
 上述三条链的明细：
+```
 -A KUBE-SEP-57KPRZ3JQVENLNBR -s 10.244.3.6/32 -m comment --comment "default/hostnames:" -j MARK --set-xmark 0x00004000/0x00004000
 -A KUBE-SEP-57KPRZ3JQVENLNBR -p tcp -m comment --comment "default/hostnames:" -m tcp -j DNAT --to-destination 10.244.3.6:9376
 
@@ -116,7 +129,7 @@ Service由kube-proxy组件，加上iptables来共同实现
 
 -A KUBE-SEP-X3P2623AGDH6CDF3 -s 10.244.2.3/32 -m comment --comment "default/hostnames:" -j MARK --set-xmark 0x00004000/0x00004000
 -A KUBE-SEP-X3P2623AGDH6CDF3 -p tcp -m comment --comment "default/hostnames:" -m tcp -j DNAT --to-destination 10.244.2.3:9376
-
+```
 可以看到，这三条链，其实是三条 DNAT 规则。但在 DNAT 规则之前，iptables 对流入的 IP 包还设置了一个“标志”（–set-xmark）
 
 而 DNAT 规则的作用，就是在 PREROUTING 检查点之前，也就是在路由之前，将流入 IP 包的目的地址和端口，
@@ -127,7 +140,9 @@ Service由kube-proxy组件，加上iptables来共同实现
 不难理解，这些 Endpoints 对应的 iptables 规则，正是 kube-proxy 通过监听 Pod 的变化事件，在宿主机上生成并维护的。
 Service的NodePort模式，不过是比ClusterIP模式，多了一条iptables规则而已，即多了一个node到Service的映射。
 
-5. IPVS模式
+<br>
+
+## 4. IPVS模式
 kube-proxy 通过 iptables 处理 Service 的过程，其实需要在宿主机上设置相当多的 iptables 规则。
 而且，kube-proxy 还需要在控制循环里不断地刷新这些规则来确保它们始终是正确的。
 当iptables规则过多、不断被刷新的时候的，就会占用大量资源，从而影响POD的性能。
@@ -153,16 +168,19 @@ iptables主要是专门用来做主机防火墙的，而不是专长做负载均
 它为 Kubernetes 集群规模带来的提升，还是非常巨大的。
 
 此外，ipvs为负载均衡算法提供了更多的选项，例如：
-rr：轮询调度
-lc：最小连接数
-dh：目标哈希
-sh：源哈希
-sed：最短期望延迟
-nq： 不排队调度
+- rr：轮询调度
+- lc：最小连接数
+- dh：目标哈希
+- sh：源哈希
+- sed：最短期望延迟
+- nq： 不排队调度
 
-6. publishNotReadyAddresses
+<br>
+
+## 5. publishNotReadyAddresses
 Service有一个属性叫做publishNotReadyAddresses，默认为false,一般不建议开启。
 开启则意味着，没有就绪的pod也会出现在endpoint列表里。
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -174,15 +192,18 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
+```
 
-7. sessionAffinity
+<br>
+
+## 6. sessionAffinity
 Service同样也支持Session affinity（粘性会话）机制，
 可以将来自同一个客户端的请求始终转发至同一个后端的Pod对象，
 
 Service affinity的效果仅仅在一段时间内生效，默认值为10800秒，超出时长，客户端再次访问会重新调度。
 该机制仅能基于客户端IP地址识别客户端身份，
 它会将经由同一个NAT服务器进行原地址转换的所有客户端识别为同一个客户端，
-
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -201,21 +222,26 @@ spec:
   - port: 80
     targetPort: 80
     nodePort: 30080
-
+```
 Service的sessionAffinity为 ClientIP. 这样同一个client的请求会被kube-proxy转发到同一个Pod。 
 sessionAffinity 默认是None，客户端的请求被kube-proxy按照RR或Random算法转发到service的pod set，
 不能保证每次发到同一个Pod。
 
-8. 如何从iptables切换为ipvs
+<br>
+
+## 7. 如何从iptables切换为ipvs
 
 1) 查看ipvs是否存在.如果不存在，则需要安装：
+```shell
 lsmod | grep ip_vs   
 apt install ipset 
 apt install ipvsadm
+```
 
-2) 修改kube-proxy configmap，指定mode为ipvss
+1) 修改kube-proxy configmap，指定mode为ipvss
 kubectl edit configmap kube-proxy -n kube-system
 修改文件中的mode
+```
 ipvs:
     excludeCIDRs: null
     minSyncPeriod: 0s
@@ -229,18 +255,25 @@ ipvs:
     metricsBindAddress: ""
     mode: "ipvs"     #修改此处
     ...
+```
 
-3) 重启namespace为kube-system的pod
+1) 重启namespace为kube-system的pod
+```
 kubectl delete pod --all -n kube-system
+```
 
-4) 检查是否使用ipvs  
+2) 检查是否使用ipvs
+```
 kubectl get pod -n kube-system
 kubectl logs kube-proxy-jj72c   -n kube-system
+```
 注意kube-proxy-jj72c使用自己的pod
 日志中出现Using ipvs Proxier
 
-5) 查看ipvs代理规则
+3) 查看ipvs代理规则
+```
 kubectl get svc --all-namespaces
 ipvsadm -ln
+```
 
 参考：https://zhuanlan.zhihu.com/p/94418251
