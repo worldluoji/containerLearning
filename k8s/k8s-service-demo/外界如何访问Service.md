@@ -1,29 +1,37 @@
+# 外界如何访问Service
+
 Service只是解决了POD的负载均衡问题，Service的访问信息在 Kubernetes 集群之外，其实是无效的。
 所以，在使用 Kubernetes 的 Service 时，一个必须要面对和解决的问题就是：
 如何从外部（Kubernetes 集群之外），访问到 Kubernetes 里创建的 Service？
 
-ClusterIP: Exposes the Service on a cluster-internal IP. 
+- **ClusterIP**: Exposes the Service on a cluster-internal IP. 
            Choosing this value makes the Service only reachable from within the cluster. 
            This is the default ServiceType.
            如果是ClusterIP类型的Service，只有kubernates集群内部可以访问。
-NodePort: Exposes the Service on each Node's IP at a static port (the NodePort). 
+- **NodePort**: Exposes the Service on each Node's IP at a static port (the NodePort). 
           A ClusterIP Service, to which the NodePort Service routes, is automatically created. 
-          You'll be able to contact the NodePort Service, from outside the cluster, by requesting <NodeIP>:<NodePort>.
-LoadBalancer: Exposes the Service externally using a cloud provider's load balancer. 
+          You'll be able to contact the NodePort Service, from outside the cluster, by requesting `<NodeIP>:<NodePort>`.
+- **LoadBalancer**: Exposes the Service externally using a cloud provider's load balancer. 
               NodePort and ClusterIP Services, to which the external load balancer routes, are automatically created.
-ExternalName: Maps the Service to the contents of the externalName field (e.g. foo.bar.example.com), 
+- **ExternalName**: Maps the Service to the contents of the externalName field (e.g. foo.bar.example.com), 
               by returning a CNAME record with its value. No proxying of any kind is set up.
 
-1. 使用nodePort
+
+## 1. 使用nodePort
 参考service-nginx-nodeport.yaml
+
 原理是kube-proxy在每台宿主机上生成这样一条 iptables 规则
+
 在nodePort模式下，关于端口的有三个参数，
-port：Service的port
-nodePort: 节点的port
-targetPort: Service代理的port,即pod中容器的port
+- port：Service的port
+- nodePort: 节点的port
+- targetPort: Service代理的port,即pod中容器的port
+
 A Service can map any incoming port to a targetPort. 
 By default and for convenience, the targetPort is set to the same value as the port field.
+
 如果如下定义
+```
 spec:
   type: NodePort
   ports:
@@ -32,13 +40,15 @@ spec:
       nodePort: 30080
       targetPort: 80
       protocol: TCP
-
+```
 则svc信息如下，（注意下面无targetPort信息，只是ClustorPort与NodePort，注意后者为Nodeport）
+```
 ingress-nginx ingress-nginx NodePort 10.105.192.34 <none> 8080:30080/TCP,8443:30443/TCP 28m
+```
 
 则可访问的组合为
-1. clusterIP + port: 10.105.192.34:8080
-2. 内网IP/公网ip + nodePort: 172.31.14.16:30080。（172.31.14.16我的aws局域网ip.）
+- 1. clusterIP + port: 10.105.192.34:8080
+- 2. 内网IP/公网ip + nodePort: 172.31.14.16:30080。（172.31.14.16我的aws局域网ip.）
 30080为nodePort也可以在iptables-save中映证。
 
 还有，就是port参数是必要指定的，nodePort即使是显式指定，也必须是在指定范围内。
@@ -46,7 +56,7 @@ ingress-nginx ingress-nginx NodePort 10.105.192.34 <none> 8080:30080/TCP,8443:30
 需要注意的是，在 NodePort 方式下，Kubernetes 会在 IP 包离开宿主机发往目的 Pod 时，对这个 IP 包做一次 SNAT 操作。
 也就是说，它给即将离开这台主机的 IP 包，进行了一次 SNAT 操作，将这个 IP 包的源地址替换成了这台宿主机上的 CNI 网桥地址，
 或者宿主机本身的 IP 地址（如果 CNI 网桥不存在的话）。 一句话，目的就是为了解决“访问回路”的问题：
-
+```
            client
              \ ^
               \ \
@@ -56,17 +66,20 @@ ingress-nginx ingress-nginx NodePort 10.105.192.34 <none> 8080:30080/TCP,8443:30
     | |   --->
     v |
  endpoint
+```
 
 可是，如果没有做 SNAT 操作的话，这时候，被转发来的 IP 包的源地址就是 client 的 IP 地址。
 所以此时，Pod 就会直接将回复发给client。对于 client 来说，它的请求明明发给了 node 2，收到的回复却来自 node 1，
 这个 client 很可能会报错。
 
+<br>
 
-2. 从外部访问 Service 的第二种方式：指定一个 LoadBalancer 类型的 Service。
+## 2. 从外部访问 Service 的第二种方式：指定一个 LoadBalancer 类型的 Service。
 适用于公有云上的 Kubernetes 服务。
 在公有云提供的 Kubernetes 服务里，都使用了一个叫作 CloudProvider 的转接层，来跟公有云本身的 API 进行对接。
 所以，在上述 LoadBalancer 类型的 Service 被提交后，Kubernetes 就会调用 CloudProvider 在公有云上为你创建一个负载均衡服务，
 并且把被代理的 Pod 的 IP 地址配置给负载均衡服务做后端。
+```
 ---
 kind: Service
 apiVersion: v1
@@ -79,9 +92,12 @@ spec:
   selector:
     app: example
   type: LoadBalancer
+```
 
+<br>
 
-3. 而第三种方式，是 Kubernetes 在 1.7 之后支持的一个新特性，叫作 ExternalName
+## 3. 第三种方式，是 Kubernetes 在 1.7 之后支持的一个新特性，叫作 ExternalName
+```
 kind: Service
 apiVersion: v1
 metadata:
@@ -89,6 +105,7 @@ metadata:
 spec:
   type: ExternalName
   externalName: my.database.example.com
+```
 
 这时候，当你通过 Service 的 DNS 名字访问它的时候，比如访问：my-service.default.svc.cluster.local。
 那么，Kubernetes 为你返回的就是my.database.example.com。
@@ -96,6 +113,7 @@ spec:
 这时，访问 my-service.default.svc.cluster.local 就和访问 my.database.example.com 这个域名是一个效果了。
 也可以给Service分配共有IP地址：
 
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -110,16 +128,16 @@ spec:
     targetPort: 9376
   externalIPs:
   - 80.11.12.10
+```
+在上述Service中，为它指定的externalIPs=80.11.12.10，就可以通过访问80.11.12.10:80访问到被代理的Pod。
+不过，在这里 Kubernetes 要求 externalIPs 必须是至少能够路由到一个 Kubernetes 的节点。
 
- 在上述Service中，为它指定的externalIPs=80.11.12.10，就可以通过访问80.11.12.10:80访问到被代理的Pod。
- 不过，在这里 Kubernetes 要求 externalIPs 必须是至少能够路由到一个 Kubernetes 的节点。
+<br>
 
-
-一个注意点：
+## 一个注意点：
 如果使用minikube，则通过下面的命令获取url访问Service
+```
 [minikuber@kube-master nginx]$ minikube service nginx-node-port --url
 http://192.168.49.2:30080
 http://192.168.49.2:30088
-
-kubernates nginx 403解决方案：
-https://www.5axxw.com/questions/content/7a5dwx
+```
