@@ -78,7 +78,7 @@ spec:
   - name: qos-demo-2-ctr
     image: nginx
     resources:
-      limits
+      limits:
         memory: "200Mi"
       requests:
         memory: "100Mi"
