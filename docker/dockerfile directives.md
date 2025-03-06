@@ -119,11 +119,12 @@ docker启动后, 并没有执行ping命令, 而是运行了hostname命令
 
 一个Dockerfile中可以有多条`ENTRYPOINT`指令，但只有最后一条`ENTRYPOINT`指令有效。
 
-和CMD类似, 默认的ENTRYPOINT也在docker run时, 也可以被覆盖. 在运行时, 用--entrypoint覆盖默认的ENTRYPOINT
+```dockerfile
+ENTRYPOINT ["echo"]
+CMD ["Hello, World!"]
 ```
-$ docker run --entrypoint hostname demo
-075a2fa95ab7 
-```
+- 直接运行容器：docker run `<image>`，输出 Hello, World!。
+- 带参数运行：docker run `<image>` "Goodbye!"，输出 Goodbye!。
 
 
 1)  `ONBUILD`
