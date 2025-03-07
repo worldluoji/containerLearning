@@ -1,4 +1,5 @@
-#  kubectl create deployment api -n kdpd00201 --image=ifccncf/nginx:1.13.7 --port=80 --replicas=3 --dry-run=client -oyaml > create-deployment-exercise2.yaml
+# kubectl create deployment api -n kdpd00201 --image=ifccncf/nginx:1.13.7 --port=80 --replicas=3 --dry-run=client -oyaml > create-deployment-exercise2.yaml
+# 当你使用 --dry-run=client 时，kubectl 会检查命令的语法和参数是否正确，并模拟执行命令的过程。它不会真正向 Kubernetes API 服务器发送请求，因此不会创建、更新或删除任何资源。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,5 +31,5 @@ spec:
         - containerPort: 80
 status: {}
 
-#注意containerPort是整型，不能用$(NGINX_PORT)代替80
-#同时注意env的使用是 name-value键值对数组，自然可以有多个
+# 注意containerPort是整型，不能用$(NGINX_PORT)代替80
+# 同时注意env的使用是 name-value键值对数组，自然可以有多个
