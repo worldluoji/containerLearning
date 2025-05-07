@@ -139,7 +139,7 @@ docker run hello-world
 重新启动:
 ```
 # 1. 终止所有 Docker 相关进程
-pkill -9 -x Docker
+pkill Docker
 
 # 2. 重新启动 Docker Desktop
 open -a Docker
