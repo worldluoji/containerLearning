@@ -146,4 +146,11 @@ docker run hello-world
 
 ---
 
-通过以上步骤，你应该能成功配置 Docker 国内镜像源，提升镜像下载速度。
+重新启动:
+```
+# 1. 终止所有 Docker 相关进程
+pkill -9 -x Docker
+
+# 2. 重新启动 Docker Desktop
+open -a Docker
+```
