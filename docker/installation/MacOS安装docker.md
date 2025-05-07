@@ -117,16 +117,6 @@ docker run hello-world
 
 ---
 
-**常见国内镜像源地址**
-| 服务商      | 镜像地址                                      | 备注                                  |
-|-------------|---------------------------------------------|---------------------------------------|
-| 阿里云  | `https://<你的ID>.mirror.aliyuncs.com`      | 需[阿里云控制台](https://cr.console.aliyun.com)获取专属地址 |
-| 腾讯云  | `https://mirror.ccs.tencentyun.com`         | 无需登录                              |
-| 中科大  | `https://docker.mirrors.ustc.edu.cn`        | 无需登录                              |
-| 网易云  | `https://hub-mirror.c.163.com`              | 无需登录                              |
-
----
-
 **常见问题**
 1. 配置后 Docker 无法启动  
    • 检查 `daemon.json` 的 JSON 格式是否正确（可使用 [JSONLint](https://jsonlint.com/) 验证）。
