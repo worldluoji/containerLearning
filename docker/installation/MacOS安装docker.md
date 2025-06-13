@@ -55,4 +55,92 @@ docker run hello-world
 
 ---
 
-通过以上步骤，你可以在 macOS 上顺利使用 Docker 运行容器。若需开机自启，可在 Docker Desktop 设置中启用相关选项。
+在 macOS 上配置 Docker 国内镜像源（镜像加速器）可以显著提升拉取镜像的速度。以下是详细步骤：
+
+---
+
+## 配置 Docker 国内镜像源
+
+**方法 1：通过 Docker Desktop 图形界面配置**
+1. 打开 Docker Desktop
+   • 点击菜单栏的 Docker 图标（鲸鱼图标），选择 Settings（偏好设置）。
+
+
+2. 进入 Docker Engine 配置
+   • 左侧导航栏选择 Docker Engine，右侧会显示 `daemon.json` 配置文件。
+
+
+3. 编辑配置文件
+   • 在 JSON 对象中添加或修改 `registry-mirrors` 字段，填入国内镜像源地址。例如：
+
+     ```json
+     {
+       "registry-mirrors": [
+         "https://<你的ID>.mirror.aliyuncs.com",  // 阿里云（需替换为你的专属地址）
+         "https://mirror.ccs.tencentyun.com",     // 腾讯云
+         "https://docker.mirrors.ustc.edu.cn",    // 中科大
+         "https://hub-mirror.c.163.com"           // 网易云
+       ],
+       "experimental": false,
+       "features": {
+         "buildkit": true
+       }
+     }
+     ```
+   • 注意：多个镜像源用逗号分隔，确保 JSON 语法正确（如末尾无多余逗号）。
+
+
+4. 保存并重启 Docker
+   • 点击 Apply & Restart，等待 Docker 重启生效。
+
+
+---
+
+**方法 2：直接修改配置文件（适用于高级用户）**
+1. 手动编辑 `daemon.json` 文件：
+   ```bash
+   # 打开配置文件（如果不存在会自动创建）
+   vim ~/.docker/daemon.json
+   ```
+2. 输入上述 JSON 内容并保存。
+
+3. 重启 Docker Desktop 服务。
+
+---
+
+**验证配置是否生效**
+1. 打开终端，运行以下命令：
+   ```bash
+   docker info
+   ```
+2. 在输出中查找 `Registry Mirrors`，确认列出的镜像源地址。
+
+---
+
+**常见问题**
+1. 配置后 Docker 无法启动  
+   • 检查 `daemon.json` 的 JSON 格式是否正确（可使用 [JSONLint](https://jsonlint.com/) 验证）。
+
+   • 删除 `daemon.json` 或恢复默认配置后重试。
+
+
+2. 镜像拉取仍慢  
+   • 尝试更换其他镜像源地址。
+
+   • 检查网络是否正常（如 VPN 可能影响连接）。
+
+
+3. 旧版 Docker Toolbox 用户  
+   • 若使用 VirtualBox 管理的虚拟机，需登录虚拟机并修改 `/etc/docker/daemon.json`。
+
+
+---
+
+重新启动:
+```
+# 1. 终止所有 Docker 相关进程
+pkill Docker
+
+# 2. 重新启动 Docker Desktop
+open -a Docker
+```
