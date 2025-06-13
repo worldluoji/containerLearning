@@ -25,10 +25,13 @@
   - 在 `/etc/docker/daemon.json` 中添加或修改如下内容（如果文件不存在，则先创建之）：
     ```json
     {
-      "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]
+      "registry-mirrors": ["https://docker.xuanyuan.me"]
     }
     ```
-    这里使用了中国科学技术大学的镜像源作为示例。
+    目前可以使用的见：https://zhuanlan.zhihu.com/p/24461370776
+    
+    很多国内镜像源已经不能使用了。
+
 - **重启Docker服务**
   - 执行 `sudo systemctl restart docker` 或 `sudo service docker restart` 命令重启Docker服务，使更改生效。
   
